@@ -1,10 +1,9 @@
 import express from 'express';
-import { PrismaClient } from '@prisma/client';
 import cors from 'cors';
 import helloRoutes from './rutas/helloRoutes';
+import prisma from "src/prismaClient";
 
 const app = express();
-const prisma = new PrismaClient();
 
 // Middleware to parse JSON requests
 app.use(express.json());
