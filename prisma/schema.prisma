@@ -7,3 +7,16 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model MaestroArticulos {
+  id                 Int     @id @default(autoincrement())
+  codigo             String  @unique      
+  descripcion        String              
+  demandaArticulo    Int                 
+  costoAlmacenamiento Float              
+  costoPedido        Float               
+  costoCompra        Float               
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
