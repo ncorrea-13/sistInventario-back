@@ -15,16 +15,16 @@ model Proveedor {
   ordenesCompra       OrdenCompra[]
 }
 
-model ModeloLoteFijo {
+model ModeloLoteFijo { //Revisa cada vez que vende. Controla que cruzaste la cantidad de stock y lote
   id                  Int    @id @default(autoincrement())
   loteOptimo          Int
   puntoPedido         Int
-  stockSeguridadLot   Int
-  articuloId          Int    @unique 
+  stockSeguridadLot   Int //Lit Time, demanda diaria
+  articuloId          Int    @unique
   articulo            Articulo @relation(fields: [articuloId], references: [codArticulo])
 }
 
-model ModeloInvFijo {
+model ModeloInvFijo { //Cron que se ejecute una ve al día y actualice los procesos. Mira hora y zona horarioa para actualizar. También a quien le toca.
   id                  Int    @id @default(autoincrement())
   intervaloTiempo     Int
   stockSeguridadInt   Int
@@ -67,18 +67,17 @@ model EstadoOrden {
   ordenesCompra          OrdenCompra[]
 }
 
-model Articulo {
+model Articulo {  //Agregar campo de fecha de peddo para oprimizar el Cron a la hora de la compra.
   codArticulo              Int    @id
   nombreArticulo           String
   descripcionArticulo      String
   fechaBaja                DateTime?
-  stockActual              Int
+  stockActual              Int  //Ajuste de inventario. Sin hacer la compra automática, ni saltar por la venta.
   costoAlmacenamiento      Float
   costoCompra              Float
   costoPedido              Float
   costoMantenimiento       Float
-  demandaAnual             Float
-  demandaDiaria            Float
+  demandaAnual             Float //se carga a mano porque no hay módulo, puede sufrir alteraciones mientras va evolucionando
   deviaacionDemandaL       Float
   deviaacionDemantaT       Float
   nivelServicioDeseado     Float
