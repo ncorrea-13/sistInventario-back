@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import helloRoutes from './rutas/helloRoutes';
-import prisma from "src/prismaClient";
+import prisma from "./prismaClient";
 
 const app = express();
 
