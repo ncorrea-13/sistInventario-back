@@ -34,7 +34,6 @@ model ModeloInvFijo { //Cron que se ejecute una ve al día y actualice los proce
 
 model ArticuloVenta {
   id                 Int    @id @default(autoincrement())
-  contadorRenglon    Int
   cantidadArticulo   Int
   VentaId            Int
   ArticuloId         Int
@@ -102,8 +101,6 @@ model ProveedorArticulo {
 
 model OrdenDetalle {
   id               Int    @id @default(autoincrement())
-  nroRenglon       Int
-  contadorArticulo Int
   ordenCompraId    Int
   articuloId       Int
   ordenCompra      OrdenCompra @relation(fields: [ordenCompraId], references: [numOrdenCompra])
