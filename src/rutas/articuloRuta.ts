@@ -1,0 +1,40 @@
+import { Router } from 'express';
+import { Request, Response } from 'express';
+import { PrismaClient } from '@prisma/client';
+import { toArticuloDTO, ArticuloDTO } from '../dto/articuloDto';
+import { ArticuloServicio } from '../servicios/articuloServicio';
+
+const prisma = new PrismaClient();
+const router = Router();
+
+router.get('/hello', (req: Request, res: Response) => {
+  res.json({ message: 'Hola desde el backend' });
+});
+
+
+router.get('/', async (req, res) => {
+  try {
+    const articulos = await prisma.articulo.findMany();
+
+    // Transformar los datos al formato del DTO
+    const articulosDTO: ArticuloDTO[] = articulos.map(toArticuloDTO);
+
+    res.status(200).json(articulosDTO);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error al obtener los artículos' });
+  }
+});
+
+// POST para crear un nuevo articulo
+router.post('/', async (req: Request, res: Response) => {
+  try {
+    const nuevoArticulo = await ArticuloServicio.crearArticulo(req.body);
+    res.status(201).json(nuevoArticulo);
+  } catch (error: any) {
+    console.error(error);
+    res.status(400).json({ error: error.message || 'Error al crear el artículo' });
+  }
+});
+
+export default router;

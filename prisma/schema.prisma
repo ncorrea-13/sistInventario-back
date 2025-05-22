@@ -8,7 +8,7 @@ datasource db {
 }
 
 model Proveedor {
-  codProveedor        Int    @id
+  codProveedor        Int    @id @default(autoincrement())
   fechaBajaProveedor  DateTime?
   nombreProv          String
   articulos           ProveedorArticulo[]
@@ -42,14 +42,14 @@ model ArticuloVenta {
 }
 
 model Venta {
-  nroVenta           Int    @id
+  nroVenta           Int    @id @default(autoincrement())
   fechaVenta         DateTime
   montoTotalVenta    Float
   detalles           ArticuloVenta[]
 }
 
 model OrdenCompra {
-  numOrdenCompra     Int    @id
+  numOrdenCompra     Int    @id @default(autoincrement())
   tamanoLote         Int
   montoOrden         Float
   proveedorId        Int
@@ -60,14 +60,14 @@ model OrdenCompra {
 }
 
 model EstadoOrden {
-  codEstadoOrden         Int    @id
+  codEstadoOrden         Int    @id @default(autoincrement())
   nombreEstadoOrden      String
   fechaBajaEstadoOrden   DateTime?
   ordenesCompra          OrdenCompra[]
 }
 
 model Articulo {  //Agregar campo de fecha de peddo para oprimizar el Cron a la hora de la compra.
-  codArticulo              Int    @id
+  codArticulo              Int    @id @default(autoincrement())
   nombreArticulo           String
   descripcionArticulo      String
   fechaBaja                DateTime?
