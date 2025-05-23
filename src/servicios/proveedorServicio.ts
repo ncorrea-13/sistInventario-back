@@ -1,9 +1,9 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
 export class ProveedorServicio {
-  static async crearProveedor(data: { nombreProv: string; }) {
+  static async crearProveedor(data: Prisma.ProveedorCreateInput) {
     return await prisma.proveedor.create({ data });
   }
 

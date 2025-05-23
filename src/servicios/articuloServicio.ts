@@ -1,21 +1,9 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
 export class ArticuloServicio {
-  static async crearArticulo(data: {
-    nombreArticulo: string;
-    descripcionArticulo: string;
-    stockActual: number;
-    costoAlmacenamiento: number;
-    costoCompra: number;
-    costoPedido: number;
-    costoMantenimiento: number;
-    demandaAnual: number;
-    deviaacionDemandaL: number;
-    deviaacionDemantaT: number;
-    nivelServicioDeseado: number;
-  }) {
+  static async crearArticulo(data:Prisma.ArticuloCreateInput ) {
     return await prisma.articulo.create({ data });
   }
 

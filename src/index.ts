@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import articuloRuta from './rutas/articuloRuta';
 import proveedorRuta from './rutas/proveedorRuta';
+import ordenCompraRuta from './rutas/ordenCompraRuta';
+import ventaRuta from './rutas/ventaRuta';
 import prisma from "./prismaClient";
 
 const app = express();
@@ -15,6 +17,8 @@ app.use(cors({ origin: ['http://192.168.100.5:3001', 'http://localhost:3001'] })
 //Transofmramos al index.ts como un "manejador de rutas", el cual solamente envía /api al que maeje (que sería hello)
 app.use('/api/articulo', articuloRuta);
 app.use('/api/proveedor', proveedorRuta);
+app.use('/api/ordenCompra', ordenCompraRuta);
+app.use('/api/venta', ventaRuta);
 
 (async () => {
   try {
