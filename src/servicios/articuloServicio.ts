@@ -7,6 +7,28 @@ export const crearArticulo = async (data: Prisma.ArticuloCreateInput) => {
 }
 
 export const darDeBajaArticulo = async (codArticulo: number) => {
+  // Verificar si el artículo tiene órdenes de compra en estado pendiente o enviada
+  const ordenesPendientesOEnviadas = await prisma.ordenCompra.findMany({
+    where: {
+      detalles: {
+        some: {
+          articuloId: codArticulo,
+        },
+      },
+      ordenEstado: {
+        nombreEstadoOrden: {
+          in: ['pendiente', 'enviada'],
+        },
+      },
+    },
+  });
+
+  if (ordenesPendientesOEnviadas.length > 0) {
+    throw new Error(
+      `El artículo con código ${codArticulo} no puede darse de baja porque tiene órdenes de compra en estado pendiente o enviada.`
+    );
+  }
+
   return await prisma.articulo.update({
     where: { codArticulo },
     data: { fechaBaja: new Date() },
@@ -40,4 +62,12 @@ export const obtenerProveedorPredeterminado = async (articuloId: number): Promis
   }
 
   return proveedorPredeterminado.proveedorId;
+};
+
+export const obtenerTodosLosArticulos = async () => {
+  return await prisma.articulo.findMany({
+    where: {
+      fechaBaja: null,
+    },
+  });
 };
