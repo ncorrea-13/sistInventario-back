@@ -45,7 +45,37 @@ const verificarOrdenCompraActiva = async (articuloId: number): Promise<void> => 
     );
   }
 };
+export const cambiarEstadoOrdenCompra = async (
+  ordenCompraId: number,
+  nuevoEstado: "Enviada" | "Finalizada" | "Cancelada"
+): Promise<void> => {
+  // Obtener la orden de compra actual junto con su estado
+  const orden = await prisma.ordenCompra.findUnique({
+    where: { numOrdenCompra: ordenCompraId },
+    include: { ordenEstado: true },
+  });
 
+  if (!orden) {
+    throw new Error(`No se encontró la Orden de Compra con ID ${ordenCompraId}.`);
+  }
+
+  if (orden.ordenEstado.nombreEstadoOrden === "Cancelada") {
+    throw new Error("No se puede cambiar el estado de una Orden de Compra cancelada.");
+  }
+
+  const estado = await prisma.estadoOrden.findFirst({
+    where: { nombreEstadoOrden: nuevoEstado },
+  });
+
+  if (!estado) {
+    throw new Error(`El estado '${nuevoEstado}' no existe.`);
+  }
+
+  await prisma.ordenCompra.update({
+    where: { numOrdenCompra: ordenCompraId },
+    data: { ordenEstadoId: estado.codEstadoOrden },
+  });
+};
 const crearOrdenCompra = async (
   articuloId: number,
   tamanoLote: number,
