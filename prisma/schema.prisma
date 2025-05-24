@@ -77,8 +77,8 @@ model Articulo {  //Agregar campo de fecha de peddo para oprimizar el Cron a la 
   costoPedido              Float
   costoMantenimiento       Float
   demandaAnual             Float //se carga a mano porque no hay módulo, puede sufrir alteraciones mientras va evolucionando
-  deviaacionDemandaL       Float
-  deviaacionDemantaT       Float
+  desviacionDemandaL       Float
+  desviacionDemandaT       Float
   nivelServicioDeseado     Float
   proveeodresArticulos     ProveedorArticulo[]
   articuloVenta            ArticuloVenta[]

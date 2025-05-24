@@ -37,4 +37,19 @@ router.post('/', async (req: Request, res: Response) => {
   }
 });
 
+// PUT para modificar un artículo
+router.put('/:id', async (req: Request, res: Response) => {
+  try {
+    const codArticulo = Number(req.params.id);
+    const articuloActualizado = await prisma.articulo.update({
+      where: { codArticulo },
+      data: req.body,
+    });
+    res.status(200).json(articuloActualizado);
+  } catch (error: any) {
+    console.error(error);
+    res.status(400).json({ error: error.message || 'Error al modificar el artículo' });
+  }
+});
+
 export default router;

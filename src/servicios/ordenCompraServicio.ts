@@ -63,6 +63,8 @@ export const generarOrdenCompra = async (articuloId: number) => {
             create: [
               {
                 articuloId,
+                nroRenglon: 1,
+                contadorArticulo: 1,
               },
             ],
           },
