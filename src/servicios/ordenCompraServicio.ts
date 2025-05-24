@@ -46,15 +46,8 @@ export const generarOrdenCompra = async (articuloId: number) => {
         );
       }
 
-      const ultimaOrden = await prisma.ordenCompra.findFirst({
-        orderBy: { numOrdenCompra: 'desc' },
-      });
-
-      const nuevoNumOrdenCompra = (ultimaOrden?.numOrdenCompra || 0) + 1;
-
       await prisma.ordenCompra.create({
         data: {
-          numOrdenCompra: nuevoNumOrdenCompra,
           tamanoLote: modeloLoteFijo.loteOptimo,
           montoOrden: articuloData.costoCompra,
           proveedorId: proveedorPredeterminado.proveedorId,
@@ -62,9 +55,7 @@ export const generarOrdenCompra = async (articuloId: number) => {
           detalles: {
             create: [
               {
-                articuloId,
-                nroRenglon: 1,
-                contadorArticulo: 1,
+                articuloId: articuloData.codArticulo,
               },
             ],
           },
