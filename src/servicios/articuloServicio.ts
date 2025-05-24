@@ -13,5 +13,6 @@ export class ArticuloServicio {
       data: { fechaBaja: new Date() },
     });
   }
+
 }
 
