@@ -13,4 +13,19 @@ export class ProveedorServicio {
       data: { fechaBajaProveedor: new Date() },
     });
   };
+
+  static async asignarArticuloAProveedor(proveedorId: number, articuloId: number
+    , cargoPedido: number, demoraEntrega: number, precioUnitaria: number, predeterminado: boolean = false
+  ) {
+    return await prisma.proveedorArticulo.create({
+      data: {
+      proveedorId,
+      articuloId,
+      cargoPedido,
+      demoraEntrega,
+      precioUnitaria,
+      predeterminado,
+      }
+    });
+  }
 };
