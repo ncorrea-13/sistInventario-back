@@ -2,30 +2,30 @@ import { Prisma, PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-export class ProveedorServicio {
-  static async crearProveedor(data: Prisma.ProveedorCreateInput) {
-    return await prisma.proveedor.create({ data });
-  }
+export const crearProveedor = async (data: Prisma.ProveedorCreateInput) => {
+  return await prisma.proveedor.create({ data });
+}
 
-  static async darDeBajaProveedor(codProveedor: number) {
-    return await prisma.proveedor.update({
-      where: { codProveedor },
-      data: { fechaBajaProveedor: new Date() },
-    });
-  };
+export const darDeBajaProveedor = async (codProveedor: number) => {
 
-  static async asignarArticuloAProveedor(proveedorId: number, articuloId: number
-    , cargoPedido: number, demoraEntrega: number, precioUnitaria: number, predeterminado: boolean = false
-  ) {
-    return await prisma.proveedorArticulo.create({
-      data: {
+
+  return await prisma.proveedor.update({
+    where: { codProveedor },
+    data: { fechaBajaProveedor: new Date() },
+  });
+};
+
+export const asignarArticuloAProveedor = async (proveedorId: number, articuloId: number
+  , cargoPedido: number, demoraEntrega: number, precioUnitaria: number, predeterminado: boolean = false
+) => {
+  return await prisma.proveedorArticulo.create({
+    data: {
       proveedorId,
       articuloId,
       cargoPedido,
       demoraEntrega,
       precioUnitaria,
       predeterminado,
-      }
-    });
-  }
-};
+    }
+  });
+}

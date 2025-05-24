@@ -1,13 +1,25 @@
 import { Router, Request, Response } from 'express';
-
+import { OrdenDTO, toOrdenDTO } from '../dto/ordenDto';
 // Simulación de base de datos en memoria
 let ordenesCompra: any[] = [];
 let idCounter = 1;
 const router = Router();
 
-// Obtener todas las órdenes de compra
-router.get('/hello', (req, res) => {
-  res.json(ordenesCompra);
+// Obtener todas las órdenes de compra en estado enviada y pendiente
+router.get('/', (req, res) => {
+  try {
+    // Filtrar órdenes de compra con estado "enviada" o "pendiente"
+    const ordenesFiltradas = ordenesCompra.filter(orden =>
+      orden.estado === 'enviada' || orden.estado === 'pendiente'
+    );
+
+    const OrdenDTO: OrdenDTO[] = ordenesFiltradas.map(toOrdenDTO);
+    res.status(200).json(ordenesFiltradas);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error al obtener las órdenes de compra' });
+  }
+
 });
 
 // Obtener una orden de compra 
