@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient , } from '@prisma/client';
 import { toArticuloDTO, ArticuloDTO } from '../dto/articuloDto';
-import { ArticuloServicio } from '../servicios/articuloServicio';
+import { crearArticulo } from '../servicios/articuloServicio';
 
 const prisma = new PrismaClient();
 const router = Router();
@@ -29,7 +29,7 @@ router.get('/', async (req, res) => {
 // POST para crear un nuevo articulo
 router.post('/', async (req: Request, res: Response) => {
   try {
-    const nuevoArticulo = await ArticuloServicio.crearArticulo(req.body);
+    const nuevoArticulo = await crearArticulo(req.body);
     res.status(201).json(nuevoArticulo);
   } catch (error: any) {
     console.error(error);
