@@ -1,9 +1,6 @@
 import { Router } from 'express';
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
-import { toProveedorDTO, ProveedorDTO } from '../dto/proveedorDto';
-import { crearProveedor } from '../servicios/proveedorServicio';
-const prisma = new PrismaClient();
+import { crearProveedor, obtenerTodosLosProveedores } from '../servicios/proveedorServicio';
 const router = Router();
 
 router.get('/hello', (req: Request, res: Response) => {
@@ -13,14 +10,8 @@ router.get('/hello', (req: Request, res: Response) => {
 //GET para obtener todos los proveedores
 router.get('/', async (req, res) => {
   try {
-    const proveedores = await prisma.proveedor.findMany({
-      where: { fechaBajaProveedor: null }, // Solo los activos
-    });
-
-    // Transformar los datos al formato del DTO
-    const proveedoresDTO: ProveedorDTO[] = proveedores.map(toProveedorDTO);
-
-    res.status(200).json(proveedoresDTO);
+    const proveedores = await obtenerTodosLosProveedores();
+    res.status(200).json(proveedores);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Error al obtener los proveedores' });

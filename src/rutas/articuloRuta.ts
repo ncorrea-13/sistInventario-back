@@ -1,8 +1,7 @@
 import { Router } from 'express';
 import { Request, Response } from 'express';
-import { PrismaClient , } from '@prisma/client';
-import { toArticuloDTO, ArticuloDTO } from '../dto/articuloDto';
-import { crearArticulo } from '../servicios/articuloServicio';
+import { PrismaClient, } from '@prisma/client';
+import { crearArticulo, obtenerTodosLosArticulos } from '../servicios/articuloServicio';
 
 const prisma = new PrismaClient();
 const router = Router();
@@ -14,12 +13,8 @@ router.get('/hello', (req: Request, res: Response) => {
 
 router.get('/', async (req, res) => {
   try {
-    const articulos = await prisma.articulo.findMany();
-
-    // Transformar los datos al formato del DTO
-    const articulosDTO: ArticuloDTO[] = articulos.map(toArticuloDTO);
-
-    res.status(200).json(articulosDTO);
+    const articulos = await obtenerTodosLosArticulos();
+    res.status(200).json(articulos);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Error al obtener los artículos' });
