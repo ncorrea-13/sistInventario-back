@@ -1,10 +1,12 @@
 import { prisma } from '../prismaClient';
+import { Prisma } from '@prisma/client';
 
-//PRIMERO CRUD
+// ✅ Crear un artículo
 export const crearArticulo = async (data: Prisma.ArticuloCreateInput) => {
   return await prisma.articulo.create({ data });
-}
+};
 
+// ✅ Obtener todos los artículos (sin baja lógica)
 export const obtenerTodosLosArticulos = async () => {
   return await prisma.articulo.findMany({
     where: {
@@ -13,8 +15,8 @@ export const obtenerTodosLosArticulos = async () => {
   });
 };
 
+// ✅ Dar de baja un artículo si no tiene OC pendientes/enviadas
 export const darDeBajaArticulo = async (codArticulo: number) => {
-  // Verificar si el artículo tiene órdenes de compra en estado pendiente o enviada
   const ordenesPendientesOEnviadas = await prisma.ordenCompra.findMany({
     where: {
       detalles: {
@@ -40,8 +42,9 @@ export const darDeBajaArticulo = async (codArticulo: number) => {
     where: { codArticulo },
     data: { fechaBaja: new Date() },
   });
-}
+};
 
+// ✅ Validar stock contra el punto de pedido
 export const validarStockArticulo = async (articuloId: number, puntoPedido: number): Promise<void> => {
   const articuloData = await prisma.articulo.findUnique({
     where: { codArticulo: articuloId },
@@ -54,8 +57,9 @@ export const validarStockArticulo = async (articuloId: number, puntoPedido: numb
   }
 };
 
+// ✅ Obtener proveedor predeterminado de un artículo
 export const obtenerProveedorPredeterminado = async (articuloId: number): Promise<number> => {
-  let proveedorPredeterminado = await prisma.proveedorArticulo.findFirst({
+  const proveedorPredeterminado = await prisma.proveedorArticulo.findFirst({
     where: {
       articuloId,
       predeterminado: true,
@@ -70,4 +74,3 @@ export const obtenerProveedorPredeterminado = async (articuloId: number): Promis
 
   return proveedorPredeterminado.proveedorId;
 };
-

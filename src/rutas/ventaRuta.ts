@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { crearVenta, listarVentas } from 'src/servicios/ventaServicio';
+import { crearVenta, listarVentas } from '../servicios/ventaServicio';
 
 const router = Router();
 
