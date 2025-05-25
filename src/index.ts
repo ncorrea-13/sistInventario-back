@@ -4,7 +4,7 @@ import articuloRuta from './rutas/articuloRuta';
 import proveedorRuta from './rutas/proveedorRuta';
 import ordenCompraRuta from './rutas/ordenCompraRuta';
 import ventaRuta from './rutas/ventaRuta';
-import prisma from "./prismaClient";
+import { prisma } from "./prismaClient";
 
 const app = express();
 
