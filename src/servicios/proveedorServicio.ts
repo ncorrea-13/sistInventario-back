@@ -1,5 +1,6 @@
 import { Prisma, PrismaClient } from '@prisma/client';
-
+//import { prisma } from '../prismaClient';
+//hay que pasar a usar esto
 const prisma = new PrismaClient();
 
 export const obtenerTodosLosProveedores = async () => {

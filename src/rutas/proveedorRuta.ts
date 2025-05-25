@@ -1,11 +1,6 @@
 import { Router } from 'express';
-import { Request, Response } from 'express';
 import { crearProveedor, obtenerTodosLosProveedores } from '../servicios/proveedorServicio';
 const router = Router();
-
-router.get('/hello', (req: Request, res: Response) => {
-  res.json({ message: 'Hola desde el backend' });
-});
 
 //GET para obtener todos los proveedores
 router.get('/', async (req, res) => {

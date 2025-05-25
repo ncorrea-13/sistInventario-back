@@ -1,10 +1,17 @@
-import { Prisma, PrismaClient } from '@prisma/client';
+import { prisma } from '../prismaClient';
 
-const prisma = new PrismaClient();
-
+//PRIMERO CRUD
 export const crearArticulo = async (data: Prisma.ArticuloCreateInput) => {
   return await prisma.articulo.create({ data });
 }
+
+export const obtenerTodosLosArticulos = async () => {
+  return await prisma.articulo.findMany({
+    where: {
+      fechaBaja: null,
+    },
+  });
+};
 
 export const darDeBajaArticulo = async (codArticulo: number) => {
   // Verificar si el artículo tiene órdenes de compra en estado pendiente o enviada
@@ -64,10 +71,3 @@ export const obtenerProveedorPredeterminado = async (articuloId: number): Promis
   return proveedorPredeterminado.proveedorId;
 };
 
-export const obtenerTodosLosArticulos = async () => {
-  return await prisma.articulo.findMany({
-    where: {
-      fechaBaja: null,
-    },
-  });
-};

@@ -1,7 +1,5 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../prismaClient';
 import { generarOrdenCompra } from './ordenCompraServicio';
-
-const prisma = new PrismaClient();
 
 export const crearVenta = async (data: { fechaVenta: Date; montoTotalVenta: number; articulos: { articuloId: number; cantidad: number; }[]; }) => {
   return await prisma.$transaction(async (prisma) => {
