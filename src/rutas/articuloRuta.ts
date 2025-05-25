@@ -1,15 +1,9 @@
 import { Router } from 'express';
 import { Request, Response } from 'express';
-import { PrismaClient, } from '@prisma/client';
+import { prisma } from '../prismaClient';
 import { crearArticulo, obtenerTodosLosArticulos } from '../servicios/articuloServicio';
 
-const prisma = new PrismaClient();
 const router = Router();
-
-router.get('/hello', (req: Request, res: Response) => {
-  res.json({ message: 'Hola desde el backend' });
-});
-
 
 router.get('/', async (req, res) => {
   try {

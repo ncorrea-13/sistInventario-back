@@ -1,4 +1,2 @@
-import { PrismaClient } from "@prisma/client"; 
-const prisma = new PrismaClient();
-// Export the Prisma client instance
-export default prisma; 
+import { PrismaClient } from "@prisma/client";
+export const prisma = new PrismaClient();
