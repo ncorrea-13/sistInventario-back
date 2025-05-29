@@ -15,6 +15,13 @@ export const obtenerTodosLosArticulos = async () => {
   });
 };
 
+// ✅ Buscar un artículo por ID
+export const buscarArticuloPorId = async (codArticulo: number) => {
+  return await prisma.articulo.findUnique({
+    where: { codArticulo },
+  });
+};
+
 // ✅ Dar de baja un artículo si no tiene OC pendientes/enviadas
 export const darDeBajaArticulo = async (codArticulo: number) => {
   const ordenesPendientesOEnviadas = await prisma.ordenCompra.findMany({

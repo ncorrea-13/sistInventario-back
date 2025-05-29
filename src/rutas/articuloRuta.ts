@@ -1,10 +1,11 @@
 import { Router } from 'express';
 import { Request, Response } from 'express';
 import { prisma } from '../prismaClient';
-import { crearArticulo, obtenerTodosLosArticulos } from '../servicios/articuloServicio';
+import { crearArticulo, obtenerTodosLosArticulos, buscarArticuloPorId } from '../servicios/articuloServicio';
 
 const router = Router();
 
+//GET ara buscar todos los artículos
 router.get('/', async (req, res) => {
   try {
     const articulos = await obtenerTodosLosArticulos();
@@ -26,6 +27,17 @@ router.post('/', async (req: Request, res: Response) => {
   }
 });
 
+// GET para ver la vista completa de un artículo
+router.get('/:id', async (req, res) => {
+  try {
+    const codArticulo = Number(req.params.id);
+    const articuloCompleto = await buscarArticuloPorId(codArticulo);
+    res.status(200).json(articuloCompleto);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error al obtener los artículos' });
+  }
+});
 // PUT para modificar un artículo
 router.put('/:id', async (req: Request, res: Response) => {
   try {
