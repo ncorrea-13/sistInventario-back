@@ -24,6 +24,7 @@ export const buscarArticuloPorId = async (codArticulo: number) => {
 
 // ✅ Dar de baja un artículo si no tiene OC pendientes/enviadas
 export const darDeBajaArticulo = async (codArticulo: number) => {
+  // Verificar si el artículo tiene órdenes de compra pendientes o enviadas
   const ordenesPendientesOEnviadas = await prisma.ordenCompra.findMany({
     where: {
       detalles: {
@@ -38,6 +39,18 @@ export const darDeBajaArticulo = async (codArticulo: number) => {
       },
     },
   });
+
+  // Verificar si el artículo tiene unidades en stock
+  const articulo = await prisma.articulo.findUnique({
+    where: { codArticulo },
+    select: { stockActual: true },
+  });
+
+  if (articulo && articulo.stockActual > 0) {
+    throw new Error(
+      `El artículo con código ${codArticulo} no puede darse de baja porque tiene unidades en stock.`
+    );
+  }
 
   if (ordenesPendientesOEnviadas.length > 0) {
     throw new Error(
