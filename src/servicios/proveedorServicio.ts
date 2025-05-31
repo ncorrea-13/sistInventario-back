@@ -15,7 +15,7 @@ export const crearProveedor = async (data: Prisma.ProveedorCreateInput) => {
   return await prisma.proveedor.create({ data });
 }
 
-export const darDeBajaProveedor = async (codProveedor: number) => {
+/*export const darDeBajaProveedor = async (codProveedor: number) => {
   // Verificar si el proveedor tiene órdenes de compra en estado pendiente o enviada
   const ordenesPendientesOEnviadas = await prisma.ordenCompra.findMany({
     where: {
@@ -32,6 +32,39 @@ export const darDeBajaProveedor = async (codProveedor: number) => {
     throw new Error('No se puede dar de baja al proveedor porque tiene órdenes de compra en estado pendiente o enviada.');
   }
 
+  return await prisma.proveedor.update({
+    where: { codProveedor },
+    data: { fechaBajaProveedor: new Date() },
+  });
+};*/
+export const darDeBajaProveedor = async (codProveedor: number) => {
+  // 1. Verificar si es predeterminado de algún artículo
+  const esPredeterminado = await prisma.proveedorArticulo.findFirst({
+    where: {
+      proveedorId: codProveedor,
+      predeterminado: true,
+    },
+  });
+  if (esPredeterminado) {
+    throw new Error('No se puede dar de baja: el proveedor es predeterminado de al menos un artículo.');
+  }
+
+  // 2. Verificar si tiene OC pendientes o en curso
+  const ordenesPendientesOEnCurso = await prisma.ordenCompra.findFirst({
+    where: {
+      proveedorId: codProveedor,
+      ordenEstado: {
+        nombreEstadoOrden: {
+          in: ['Pendiente', 'Enviada'],
+        },
+      },
+    },
+  });
+  if (ordenesPendientesOEnCurso) {
+    throw new Error('No se puede dar de baja: el proveedor tiene órdenes de compra pendientes o en curso.');
+  }
+
+  // 3. Dar de baja (soft delete)
   return await prisma.proveedor.update({
     where: { codProveedor },
     data: { fechaBajaProveedor: new Date() },
