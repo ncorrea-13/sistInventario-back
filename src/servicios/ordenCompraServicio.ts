@@ -7,7 +7,6 @@ export const generarOrdenCompra = async (
   tamanoLote?: number,
   proveedorId?: number
 ) => {
-  console.log('Valor de articuloId:', articuloId);
   const modeloLoteFijo = await prisma.modeloLoteFijo.findFirst({
     where: { articuloId: articuloId },
   });
@@ -150,7 +149,7 @@ const verificarOrdenCompraActiva = async (articuloId: number): Promise<void> => 
 
 export const cambiarEstadoOrdenCompra = async (
   ordenCompraId: number,
-  nuevoEstado: "Enviada" | "Finalizada" | "Cancelada"
+  nuevoEstado: "Pendiente" | "Enviada" | "Finalizada" | "Cancelada"
 ): Promise<void> => {
   // Obtener la orden de compra actual junto con su estado
   const orden = await prisma.ordenCompra.findUnique({
@@ -166,6 +165,17 @@ export const cambiarEstadoOrdenCompra = async (
     throw new Error("No se puede cambiar el estado de una Orden de Compra cancelada.");
   }
 
+  if (orden.ordenEstado.nombreEstadoOrden === "Enviada" && nuevoEstado === "Pendiente") {
+    throw new Error("No se puede cambiar el estado de 'Enviada' a 'Pendiente'.");
+  }
+
+  if (orden.ordenEstado.nombreEstadoOrden === "Pendiente" && nuevoEstado !== "Cancelada" && nuevoEstado !== "Enviada") {
+    throw new Error("Desde 'Pendiente', solo se puede cambiar a 'Cancelada' o 'Enviada'.");
+  }
+
+  if (orden.ordenEstado.nombreEstadoOrden !== "Pendiente" && nuevoEstado === "Cancelada") {
+    throw new Error("Solo se puede cancelar una orden de compra cuando está pendiente");
+  }
   const estado = await prisma.estadoOrden.findFirst({
     where: { nombreEstadoOrden: nuevoEstado },
   });
