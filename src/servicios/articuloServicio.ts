@@ -3,7 +3,84 @@ import { Prisma } from '@prisma/client';
 
 // ✅ Crear un artículo
 export const crearArticulo = async (data: Prisma.ArticuloCreateInput) => {
-  return await prisma.articulo.create({ data });
+  
+  const articulo = await prisma.articulo.create({data});
+
+  if (
+    articulo.demandaAnual &&
+    articulo.costoPedido &&
+    articulo.costoAlmacenamiento &&
+    articulo.desviacionDemandaL &&
+    articulo.nivelServicioDeseado
+  ) {
+    // ⚠️ Tiempo de entrega asumido fijo. Podés mejorarlo buscando el proveedor predeterminado.
+    const tiempoEntrega = 5; // Por ejemplo
+
+    const calculo = calcularModeloLoteFijo({
+      demandaAnual: articulo.demandaAnual,
+      costoPedido: articulo.costoPedido,
+      costoAlmacenamiento: articulo.costoAlmacenamiento,
+      desviacionDemandaL: articulo.desviacionDemandaL,
+      nivelServicioDeseado: articulo.nivelServicioDeseado,
+      tiempoEntrega,
+    });
+
+    await prisma.modeloLoteFijo.create({
+      data: {
+        loteOptimo: calculo.loteOptimo,
+        puntoPedido: calculo.puntoPedido,
+        stockSeguridadLot: calculo.stockSeguridadLot,
+        articuloId: articulo.codArticulo,
+      },
+    });
+  }
+
+  return articulo;
+};
+// ✅ Actualizar un artículo
+export const actualizarArticulo = async (
+  codArticulo: number,
+  data: Prisma.ArticuloUpdateInput
+) => {
+  const articuloActualizado = await prisma.articulo.update({
+    where: { codArticulo },
+    data,
+  });
+
+  // ⚠️ Verificamos si el artículo tiene suficientes datos para calcular el modelo
+  if (
+    articuloActualizado.demandaAnual &&
+    articuloActualizado.costoPedido &&
+    articuloActualizado.costoAlmacenamiento &&
+    articuloActualizado.desviacionDemandaL &&
+    articuloActualizado.nivelServicioDeseado
+  ) {
+    const tiempoEntrega = 5; // ⚠️ Podés mejorar esto usando el proveedor predeterminado
+
+    const calculo = calcularModeloLoteFijo({
+      demandaAnual: articuloActualizado.demandaAnual,
+      costoPedido: articuloActualizado.costoPedido,
+      costoAlmacenamiento: articuloActualizado.costoAlmacenamiento,
+      desviacionDemandaL: articuloActualizado.desviacionDemandaL,
+      nivelServicioDeseado: articuloActualizado.nivelServicioDeseado,
+      tiempoEntrega,
+    });
+
+    await prisma.modeloLoteFijo.upsert({
+      where: { articuloId: codArticulo },
+      update: {
+        loteOptimo: calculo.loteOptimo,
+        puntoPedido: calculo.puntoPedido,
+        stockSeguridadLot: calculo.stockSeguridadLot,
+      },
+      create: {
+        ...calculo,
+        articuloId: codArticulo,
+      },
+    });
+  }
+
+  return articuloActualizado;
 };
 
 // ✅ Obtener todos los artículos (sin baja lógica)
@@ -24,6 +101,7 @@ export const buscarArticuloPorId = async (codArticulo: number) => {
 
 // ✅ Dar de baja un artículo si no tiene OC pendientes/enviadas
 export const darDeBajaArticulo = async (codArticulo: number) => {
+  // Verificar si el artículo tiene órdenes de compra pendientes o enviadas
   const ordenesPendientesOEnviadas = await prisma.ordenCompra.findMany({
     where: {
       detalles: {
@@ -38,6 +116,18 @@ export const darDeBajaArticulo = async (codArticulo: number) => {
       },
     },
   });
+
+  // Verificar si el artículo tiene unidades en stock
+  const articulo = await prisma.articulo.findUnique({
+    where: { codArticulo },
+    select: { stockActual: true },
+  });
+
+  if (articulo && articulo.stockActual > 0) {
+    throw new Error(
+      `El artículo con código ${codArticulo} no puede darse de baja porque tiene unidades en stock.`
+    );
+  }
 
   if (ordenesPendientesOEnviadas.length > 0) {
     throw new Error(
@@ -80,4 +170,33 @@ export const obtenerProveedorPredeterminado = async (articuloId: number): Promis
   }
 
   return proveedorPredeterminado.proveedorId;
+};
+export function calcularModeloLoteFijo(params: {
+    demandaAnual: number;
+    costoPedido: number;
+    costoAlmacenamiento: number;
+    tiempoEntrega: number;
+    desviacionDemandaL: number;
+    nivelServicioDeseado: number;
+  }) {
+    const {
+      demandaAnual,
+      costoPedido,
+      costoAlmacenamiento,
+      tiempoEntrega,
+      desviacionDemandaL,
+      nivelServicioDeseado,
+    } = params;
+
+    const demandaDiaria = demandaAnual / 365;
+
+     const loteOptimo = Math.sqrt((2 * demandaAnual * costoPedido) / costoAlmacenamiento);
+  const stockSeguridadLot = nivelServicioDeseado * desviacionDemandaL;
+  const puntoPedido = demandaDiaria * tiempoEntrega + stockSeguridadLot;
+
+   return {
+    loteOptimo: Math.round(loteOptimo),
+    puntoPedido: Math.round(puntoPedido),
+    stockSeguridadLot: Math.round(stockSeguridadLot),
+  };
 };

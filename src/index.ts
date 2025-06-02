@@ -5,6 +5,8 @@ import proveedorRuta from './rutas/proveedorRuta';
 import ordenCompraRuta from './rutas/ordenCompraRuta';
 import ventaRuta from './rutas/ventaRuta';
 import { prisma } from "./prismaClient";
+import './cron/articuloCron';
+
 
 const app = express();
 

@@ -1,29 +1,19 @@
 import { prisma } from '../prismaClient';
-import { validarStockArticulo, obtenerProveedorPredeterminado } from './articuloServicio';
+import { obtenerProveedorPredeterminado } from './articuloServicio';
 
 //PRIMERO CRUD
 export const generarOrdenCompra = async (
   articuloId: number,
-  tamanoLote?: number,
+  tamanoLote: number,
   proveedorId?: number
 ) => {
-  const modeloLoteFijo = await prisma.modeloLoteFijo.findUnique({
-    where: { articuloId },
-  });
 
-  if (!modeloLoteFijo) {
-    throw new Error(`No se encontró un modelo de lote fijo para el artículo con ID ${articuloId}`);
-  }
-
-  await validarStockArticulo(articuloId, modeloLoteFijo.puntoPedido);
   await verificarOrdenCompraActiva(articuloId);
   const proveedorFinalId = proveedorId ?? (await obtenerProveedorPredeterminado(articuloId));
-
   await crearOrdenCompra(
     articuloId,
-    tamanoLote || modeloLoteFijo.loteOptimo,
+    tamanoLote,
     proveedorFinalId,
-    modeloLoteFijo.loteOptimo
   );
 };
 
@@ -31,12 +21,21 @@ const crearOrdenCompra = async (
   articuloId: number,
   tamanoLote: number,
   proveedorId: number,
-  costoCompra: number
 ): Promise<void> => {
+  const proveedorArticulo = await prisma.proveedorArticulo.findFirst({
+    where: { articuloId, proveedorId },
+  });
+
+  if (!proveedorArticulo) {
+    throw new Error(`No se encontró un proveedor para el artículo con ID ${articuloId}`);
+  }
+
+  const montoOrden = tamanoLote * proveedorArticulo.precioUnitaria;
+
   await prisma.ordenCompra.create({
     data: {
       tamanoLote,
-      montoOrden: costoCompra,
+      montoOrden,
       proveedorId,
       ordenEstadoId: 1,
       detalles: {
@@ -66,7 +65,7 @@ export const obtenerOrdenCompraPorId = async (ordenCompraId: number) => {
   return ordenCompra;
 };
 
-export const actualizarOrdenCompra = async (ordenCompraId: number, datosActualizados: { tamanoLote?: number, montoOrden?: number, proveedorId?: number, ordenEstadoId?: number, }): Promise<void> => {
+export const actualizarOrdenCompra = async (ordenCompraId: number, datosActualizados: { tamanoLote?: number, montoOrden?: number, proveedorId?: number, ordenEstadoId?: number, }): Promise<object> => {
   const ordenExistente = await prisma.ordenCompra.findUnique({
     where: { numOrdenCompra: ordenCompraId },
   });
@@ -75,11 +74,45 @@ export const actualizarOrdenCompra = async (ordenCompraId: number, datosActualiz
     throw new Error(`No se encontró la Orden de Compra con ID ${ordenCompraId}.`);
   }
 
+  if (
+    datosActualizados.ordenEstadoId &&
+    ordenExistente.ordenEstadoId !== datosActualizados.ordenEstadoId
+  ) {
+    const estadoOrden = await prisma.estadoOrden.findUnique({
+      where: { codEstadoOrden: datosActualizados.ordenEstadoId },
+    });
+
+    if (!estadoOrden) {
+      throw new Error(`El estado con ID ${datosActualizados.ordenEstadoId} no existe.`);
+    }
+
+    await cambiarEstadoOrdenCompra(
+      ordenCompraId,
+      estadoOrden.nombreEstadoOrden as "Enviada" | "Finalizada" | "Cancelada"
+    );
+  }
+
+  if (datosActualizados.proveedorId) {
+    const proveedor = await prisma.proveedor.findUnique({
+      where: { codProveedor: datosActualizados.proveedorId },
+    });
+
+    if (!proveedor) {
+      throw new Error(`El proveedor con ID ${datosActualizados.proveedorId} no existe.`);
+    }
+  }
+
   // Actualizar la orden de compra con los datos proporcionados
-  await prisma.ordenCompra.update({
+  const ordenActualizada = await prisma.ordenCompra.update({
     where: { numOrdenCompra: ordenCompraId },
-    data: datosActualizados,
+    data: {
+      tamanoLote: datosActualizados.tamanoLote,
+      montoOrden: datosActualizados.montoOrden,
+      proveedorId: datosActualizados.proveedorId,
+      ordenEstadoId: datosActualizados.ordenEstadoId
+    },
   });
+  return ordenActualizada;
 };
 
 export const obtenerTodasLasOrdenesCompra = async () => {
@@ -116,7 +149,7 @@ const verificarOrdenCompraActiva = async (articuloId: number): Promise<void> => 
 
 export const cambiarEstadoOrdenCompra = async (
   ordenCompraId: number,
-  nuevoEstado: "Enviada" | "Finalizada" | "Cancelada"
+  nuevoEstado: "Pendiente" | "Enviada" | "Finalizada" | "Cancelada"
 ): Promise<void> => {
   // Obtener la orden de compra actual junto con su estado
   const orden = await prisma.ordenCompra.findUnique({
@@ -132,6 +165,17 @@ export const cambiarEstadoOrdenCompra = async (
     throw new Error("No se puede cambiar el estado de una Orden de Compra cancelada.");
   }
 
+  if (orden.ordenEstado.nombreEstadoOrden === "Enviada" && nuevoEstado === "Pendiente") {
+    throw new Error("No se puede cambiar el estado de 'Enviada' a 'Pendiente'.");
+  }
+
+  if (orden.ordenEstado.nombreEstadoOrden === "Pendiente" && nuevoEstado !== "Cancelada" && nuevoEstado !== "Enviada") {
+    throw new Error("Desde 'Pendiente', solo se puede cambiar a 'Cancelada' o 'Enviada'.");
+  }
+
+  if (orden.ordenEstado.nombreEstadoOrden !== "Pendiente" && nuevoEstado === "Cancelada") {
+    throw new Error("Solo se puede cancelar una orden de compra cuando está pendiente");
+  }
   const estado = await prisma.estadoOrden.findFirst({
     where: { nombreEstadoOrden: nuevoEstado },
   });

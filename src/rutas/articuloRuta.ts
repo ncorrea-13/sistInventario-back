@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { Request, Response } from 'express';
 import { prisma } from '../prismaClient';
 import { crearArticulo, obtenerTodosLosArticulos, buscarArticuloPorId } from '../servicios/articuloServicio';
+import { darDeBajaArticulo } from '../servicios/articuloServicio';
 
 const router = Router();
 
@@ -42,15 +43,26 @@ router.get('/:id', async (req, res) => {
 router.put('/:id', async (req: Request, res: Response) => {
   try {
     const codArticulo = Number(req.params.id);
-    const articuloActualizado = await prisma.articulo.update({
+    const articulo = await prisma.articulo.update({
       where: { codArticulo },
       data: req.body,
     });
-    res.status(200).json(articuloActualizado);
+    res.status(200).json(articulo);
   } catch (error: any) {
     console.error(error);
     res.status(400).json({ error: error.message || 'Error al modificar el artículo' });
   }
 });
 
+// PATCH para dar de baja un artículo
+router.patch('/:id/baja', async (req: Request, res: Response) => {
+  try {
+    const codArticulo = Number(req.params.id);
+    const articuloDadoDeBaja = await darDeBajaArticulo(codArticulo);
+    res.status(200).json(articuloDadoDeBaja);
+  } catch (error: any) {
+    console.error(error);
+    res.status(400).json({ error: error.message || 'Error al dar de baja el artículo' });
+  }
+});
 export default router;
