@@ -7,9 +7,8 @@ const router = Router();
 router.post('/', async (req: Request, res: Response) => {
   try {
     // Respuesta exitosa
-    const { fechaVenta, montoTotalVenta, articulos } = req.body;
+    const { montoTotalVenta, articulos } = req.body;
     const nuevaVenta = await crearVenta({
-      fechaVenta: new Date(fechaVenta),
       montoTotalVenta,
       articulos,
     });
