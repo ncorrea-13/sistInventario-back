@@ -1,28 +1,19 @@
 import { prisma } from '../prismaClient';
-import { validarStockArticulo, obtenerProveedorPredeterminado } from './articuloServicio';
+import { obtenerProveedorPredeterminado } from './articuloServicio';
 
 //PRIMERO CRUD
 export const generarOrdenCompra = async (
   articuloId: number,
-  tamanoLote?: number,
+  tamanoLote: number,
   proveedorId?: number
 ) => {
-  const modeloLoteFijo = await prisma.modeloLoteFijo.findFirst({
-    where: { articuloId: articuloId },
-  });
 
-  if (!modeloLoteFijo) {
-    throw new Error(`No se encontró un modelo de lote fijo para el artículo con ID ${articuloId}`);
-  }
-  await validarStockArticulo(articuloId, modeloLoteFijo.puntoPedido);
   await verificarOrdenCompraActiva(articuloId);
   const proveedorFinalId = proveedorId ?? (await obtenerProveedorPredeterminado(articuloId));
-
   await crearOrdenCompra(
     articuloId,
-    tamanoLote || modeloLoteFijo.loteOptimo,
+    tamanoLote,
     proveedorFinalId,
-    modeloLoteFijo.loteOptimo
   );
 };
 
@@ -30,12 +21,21 @@ const crearOrdenCompra = async (
   articuloId: number,
   tamanoLote: number,
   proveedorId: number,
-  costoCompra: number
 ): Promise<void> => {
+  const proveedorArticulo = await prisma.proveedorArticulo.findFirst({
+    where: { articuloId, proveedorId },
+  });
+
+  if (!proveedorArticulo) {
+    throw new Error(`No se encontró un proveedor para el artículo con ID ${articuloId}`);
+  }
+
+  const montoOrden = tamanoLote * proveedorArticulo.precioUnitaria;
+
   await prisma.ordenCompra.create({
     data: {
       tamanoLote,
-      montoOrden: costoCompra,
+      montoOrden,
       proveedorId,
       ordenEstadoId: 1,
       detalles: {

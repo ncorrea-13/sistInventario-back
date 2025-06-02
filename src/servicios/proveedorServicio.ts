@@ -15,28 +15,6 @@ export const crearProveedor = async (data: Prisma.ProveedorCreateInput) => {
   return await prisma.proveedor.create({ data });
 }
 
-/*export const darDeBajaProveedor = async (codProveedor: number) => {
-  // Verificar si el proveedor tiene órdenes de compra en estado pendiente o enviada
-  const ordenesPendientesOEnviadas = await prisma.ordenCompra.findMany({
-    where: {
-      proveedorId: codProveedor,
-      ordenEstado: {
-        nombreEstadoOrden: {
-          in: ['pendiente', 'enviada'],
-        },
-      },
-    },
-  });
-
-  if (ordenesPendientesOEnviadas.length > 0) {
-    throw new Error('No se puede dar de baja al proveedor porque tiene órdenes de compra en estado pendiente o enviada.');
-  }
-
-  return await prisma.proveedor.update({
-    where: { codProveedor },
-    data: { fechaBajaProveedor: new Date() },
-  });
-};*/
 export const darDeBajaProveedor = async (codProveedor: number) => {
   // 1. Verificar si es predeterminado de algún artículo
   const esPredeterminado = await prisma.proveedorArticulo.findFirst({
