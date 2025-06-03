@@ -1,5 +1,6 @@
 import cron from 'node-cron';
 import { prisma } from '../prismaClient';
+import { calcularModeloIntervaloFijo } from '../servicios/articuloServicio';
 
 cron.schedule('0 2 * * *', async () => {
   try {
@@ -18,66 +19,65 @@ cron.schedule('0 2 * * *', async () => {
     console.log(`📦 Se encontraron ${modelos.length} artículos con modelo de intervalo fijo.`);
 
     for (const modelo of modelos) {
-      const { articulo, stockSeguridadInt } = modelo;
+      const { articulo } = modelo;
+      const proveedorPredeterminado = articulo.proveedorArticulos.find(p => p.predeterminado);
 
-      if (articulo.stockActual <= stockSeguridadInt) {
-        const proveedorPredeterminado = articulo.proveedorArticulos.find(p => p.predeterminado);
+      if (!proveedorPredeterminado) {
+        console.warn(`❌ No se encontró proveedor predeterminado para el artículo ${articulo.codArticulo}`);
+        continue;
+      }
 
-        if (!proveedorPredeterminado) {
-          console.warn(`❌ No se encontró proveedor predeterminado para el artículo ${articulo.codArticulo}`);
-          continue;
-        }
-
-        const ocExistente = await prisma.ordenCompra.findFirst({
-          where: {
-            detalles: {
-              some: {
-                articuloId: articulo.codArticulo,
-              },
-            },
-            ordenEstado: {
-              nombreEstadoOrden: {
-                in: ['pendiente', 'enviada'],
-              },
+      const ocExistente = await prisma.ordenCompra.findFirst({
+        where: {
+          detalles: {
+            some: {
+              articuloId: articulo.codArticulo,
             },
           },
-        });
-
-        if (ocExistente) {
-          console.log(`🔁 Ya existe OC activa para artículo ${articulo.codArticulo}`);
-          continue;
-        }
-
-        // Parámetros para la fórmula
-        const d = articulo.demandaAnual / 365;
-        const T = modelo.intervaloTiempo;
-        const L = proveedorPredeterminado.demoraEntrega;
-        const z = articulo.nivelServicioDeseado;
-        const sigma = articulo.desviacionDemandaT;
-        const I = articulo.stockActual;
-
-        if (d && T && L && z && sigma !== undefined && I !== undefined) {
-          const cantidadSugerida = Math.max(1, Math.round(d * (T + L) + z * sigma - I));
-
-          await prisma.ordenCompra.create({
-            data: {
-              tamanoLote: cantidadSugerida,
-              montoOrden: articulo.costoCompra * cantidadSugerida,
-              proveedorId: proveedorPredeterminado.proveedorId,
-              ordenEstadoId: 1, // Estado "pendiente"
-              detalles: {
-                create: [{
-                  articuloId: articulo.codArticulo,
-                }],
-              },
+          ordenEstado: {
+            nombreEstadoOrden: {
+              in: ['pendiente', 'enviada'],
             },
-          });
+          },
+        },
+      });
 
-          console.log(`✅ OC creada para artículo ${articulo.nombreArticulo}`);
-        } else {
-          console.warn(`⚠️ Faltan datos para calcular q del artículo ${articulo.codArticulo}`);
-        }
+      if (ocExistente) {
+        console.log(`🔁 Ya existe OC activa para artículo ${articulo.codArticulo}`);
+        continue;
       }
+
+      // Parámetros para el cálculo
+      const intervaloTiempo = modelo.intervaloTiempo;
+      const tiempoEntrega = proveedorPredeterminado.demoraEntrega;
+
+      const calculo = calcularModeloIntervaloFijo({
+        demandaAnual: articulo.demandaAnual,
+        desviacionDemandaT: articulo.desviacionDemandaT,
+        nivelServicioDeseado: articulo.nivelServicioDeseado,
+        intervaloTiempo,
+        tiempoEntrega,
+      });
+
+      const cantidadSugerida = Math.max(1, Math.round(calculo.inventarioMaximo - articulo.stockActual));
+
+      await prisma.ordenCompra.create({
+        data: {
+          tamanoLote: cantidadSugerida,
+          montoOrden: articulo.costoCompra * cantidadSugerida,
+          proveedorId: proveedorPredeterminado.proveedorId,
+          ordenEstadoId: 1, // Estado "pendiente"
+          detalles: {
+            create: [
+              {
+                articuloId: articulo.codArticulo,
+              },
+            ],
+          },
+        },
+      });
+
+      console.log(`✅ OC creada para artículo ${articulo.nombreArticulo}`);
     }
   } catch (error) {
     console.error('❌ Error al ejecutar el cron:', error);
