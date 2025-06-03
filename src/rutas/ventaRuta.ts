@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { crearVenta, listarVentas } from '../servicios/ventaServicio';
+import { crearVenta, listarVentas, verDetalleVenta } from '../servicios/ventaServicio';
 
 const router = Router();
 
@@ -32,4 +32,14 @@ router.get('/', async (req: Request, res: Response) => {
   }
 });
 
+// Obtener el detalle de una sola venta
+router.get('/:id', async (req: Request, res: Response) => {
+  try {
+    const ventaId = Number(req.params.id);
+    const ventas = await verDetalleVenta(ventaId);
+    res.status(200).json({ ventas });
+  } catch (error) {
+    res.status(500).json({ mensaje: 'Error al obtener la venta', error });
+  }
+});
 export default router;
