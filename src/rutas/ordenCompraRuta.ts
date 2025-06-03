@@ -36,8 +36,8 @@ router.post('/', async (req, res) => {
 // Actualizar una orden de compra existente
 router.put('/:id', async (req, res) => {
   try {
-    const ordenCompraId = req.body.ordenCompraId;
     const datosActualizados = req.body.datosActualizados; // Accede al objeto anidado
+    const ordenCompraId = datosActualizados.numOrdenCompra; // Accede al objeto anidado 
     const datos = {
       tamanoLote: datosActualizados.tamanoLote,
       montoOrden: datosActualizados.montoOrden,
