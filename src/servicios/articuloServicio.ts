@@ -1,6 +1,55 @@
 import { prisma } from '../prismaClient';
 import { Prisma } from '@prisma/client';
 
+//Calcular CGI
+export const calcularCGI = async (articuloId: number) => {
+  const articulo = await prisma.articulo.findUnique({
+    where: { codArticulo: articuloId },
+    include: {
+      modeloFijoLote: true,
+    },
+  });
+
+  if (!articulo) throw new Error('Artículo no encontrado');
+
+  const {
+    demandaAnual,
+    costoAlmacenamiento,
+    costoPedido,
+    costoCompra,
+    modeloFijoLote,
+  } = articulo;
+
+  if (
+    demandaAnual === null ||
+    costoAlmacenamiento === null ||
+    costoPedido === null ||
+    costoCompra === null ||
+    !modeloFijoLote?.loteOptimo
+  ) {
+    throw new Error('Faltan datos para calcular el CGI');
+  }
+
+  const Q = modeloFijoLote.loteOptimo;
+  const D = demandaAnual;
+  const Ch = costoAlmacenamiento;
+  const Co = costoPedido;
+  const Cu = costoCompra;
+
+  const CGI = (Q / 2) * Ch + (D / Q) * Co + D * Cu;
+
+  return {
+    articulo: articulo.nombreArticulo,
+    CGI: Math.round(CGI * 100) / 100,
+    detalle: {
+      Q,
+      Ch,
+      Co,
+      D,
+      Cu,
+    },
+  };
+};
 // ✅ Calcular modelo de lote fijo
 export function calcularModeloLoteFijo(params: {
     demandaAnual: number;

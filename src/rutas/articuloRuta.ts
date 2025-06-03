@@ -3,7 +3,7 @@ import { Request, Response } from 'express';
 import { prisma } from '../prismaClient';
 import { crearArticulo, obtenerTodosLosArticulos, buscarArticuloPorId } from '../servicios/articuloServicio';
 import { darDeBajaArticulo } from '../servicios/articuloServicio';
-
+import { calcularCGI } from '../servicios/articuloServicio';
 const router = Router();
 
 //GET ara buscar todos los artículos
@@ -63,6 +63,18 @@ router.patch('/:id/baja', async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error(error);
     res.status(400).json({ error: error.message || 'Error al dar de baja el artículo' });
+  }
+});
+
+//  Calcular CGI de un artículo
+router.get('/:id/cgi', async (req: Request, res: Response) => {
+  try {
+    const codArticulo = Number(req.params.id);
+    const resultado = await calcularCGI(codArticulo);
+    res.status(200).json(resultado);
+  } catch (error: any) {
+    console.error(error);
+    res.status(400).json({ error: error.message || 'Error al calcular el CGI' });
   }
 });
 export default router;
