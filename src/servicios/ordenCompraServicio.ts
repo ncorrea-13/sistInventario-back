@@ -65,13 +65,13 @@ export const obtenerOrdenCompraPorId = async (ordenCompraId: number) => {
   return ordenCompra;
 };
 
-export const actualizarOrdenCompra = async (ordenCompraId: number, datosActualizados: { tamanoLote?: number, montoOrden?: number, proveedorId?: number, ordenEstadoId?: number, }): Promise<object> => {
+export const actualizarOrdenCompra = async (numOrdenCompra: number, datosActualizados: { tamanoLote?: number, montoOrden?: number, proveedorId?: number, ordenEstadoId?: number, }): Promise<object> => {
   const ordenExistente = await prisma.ordenCompra.findUnique({
-    where: { numOrdenCompra: ordenCompraId },
+    where: { numOrdenCompra },
   });
 
   if (!ordenExistente) {
-    throw new Error(`No se encontró la Orden de Compra con ID ${ordenCompraId}.`);
+    throw new Error(`No se encontró la Orden de Compra con ID ${numOrdenCompra}.`);
   }
 
   if (
@@ -87,7 +87,7 @@ export const actualizarOrdenCompra = async (ordenCompraId: number, datosActualiz
     }
 
     await cambiarEstadoOrdenCompra(
-      ordenCompraId,
+      numOrdenCompra,
       estadoOrden.nombreEstadoOrden as "Enviada" | "Finalizada" | "Cancelada"
     );
   }
@@ -104,7 +104,7 @@ export const actualizarOrdenCompra = async (ordenCompraId: number, datosActualiz
 
   // Actualizar la orden de compra con los datos proporcionados
   const ordenActualizada = await prisma.ordenCompra.update({
-    where: { numOrdenCompra: ordenCompraId },
+    where: { numOrdenCompra },
     data: {
       tamanoLote: datosActualizados.tamanoLote,
       montoOrden: datosActualizados.montoOrden,
