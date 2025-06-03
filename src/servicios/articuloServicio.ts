@@ -114,7 +114,10 @@ export function calcularModeloIntervaloFijo(params: {
 export const crearArticulo = async (data: Prisma.ArticuloCreateInput) => {
 
   const articulo = await prisma.articulo.create({
-    data,
+    data: {
+      ...data,
+      codArticulo: undefined,
+    },
     select: {
       codArticulo: true,
       modeloInventario: true,
