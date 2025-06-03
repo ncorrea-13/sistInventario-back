@@ -3,29 +3,29 @@ import { Prisma } from '@prisma/client';
 
 // ✅ Calcular modelo de lote fijo
 export function calcularModeloLoteFijo(params: {
-    demandaAnual: number;
-    costoPedido: number;
-    costoAlmacenamiento: number;
-    tiempoEntrega: number;
-    desviacionDemandaL: number;
-    nivelServicioDeseado: number;
-  }) {
-    const {
-      demandaAnual,
-      costoPedido,
-      costoAlmacenamiento,
-      tiempoEntrega,
-      desviacionDemandaL,
-      nivelServicioDeseado,
-    } = params;
+  demandaAnual: number;
+  costoPedido: number;
+  costoAlmacenamiento: number;
+  tiempoEntrega: number;
+  desviacionDemandaL: number;
+  nivelServicioDeseado: number;
+}) {
+  const {
+    demandaAnual,
+    costoPedido,
+    costoAlmacenamiento,
+    tiempoEntrega,
+    desviacionDemandaL,
+    nivelServicioDeseado,
+  } = params;
 
-    const demandaDiaria = demandaAnual / 365;
+  const demandaDiaria = demandaAnual / 365;
 
-     const loteOptimo = Math.sqrt((2 * demandaAnual * costoPedido) / costoAlmacenamiento);
+  const loteOptimo = Math.sqrt((2 * demandaAnual * costoPedido) / costoAlmacenamiento);
   const stockSeguridadLot = nivelServicioDeseado * desviacionDemandaL;
   const puntoPedido = demandaDiaria * tiempoEntrega + stockSeguridadLot;
 
-   return {
+  return {
     loteOptimo: Math.round(loteOptimo),
     puntoPedido: Math.round(puntoPedido),
     stockSeguridadLot: Math.round(stockSeguridadLot),
@@ -63,8 +63,9 @@ export function calcularModeloIntervaloFijo(params: {
 
 // ✅ Crear un artículo
 export const crearArticulo = async (data: Prisma.ArticuloCreateInput) => {
-  
-  const articulo = await prisma.articulo.create({data,
+
+  const articulo = await prisma.articulo.create({
+    data,
     select: {
       codArticulo: true,
       modeloInventario: true,
@@ -77,36 +78,36 @@ export const crearArticulo = async (data: Prisma.ArticuloCreateInput) => {
     },
   });
   if (articulo.modeloInventario === 'loteFijo') {
-  if (
-    articulo.demandaAnual &&
-    articulo.costoPedido &&
-    articulo.costoAlmacenamiento &&
-    articulo.desviacionDemandaL &&
-    articulo.nivelServicioDeseado
-  ) {
-    // ⚠️ Tiempo de entrega asumido fijo. Podés mejorarlo buscando el proveedor predeterminado.
-    const tiempoEntrega = 5; // Por ejemplo
+    if (
+      articulo.demandaAnual &&
+      articulo.costoPedido &&
+      articulo.costoAlmacenamiento &&
+      articulo.desviacionDemandaL &&
+      articulo.nivelServicioDeseado
+    ) {
+      // ⚠️ Tiempo de entrega asumido fijo. Podés mejorarlo buscando el proveedor predeterminado.
+      const tiempoEntrega = 5; // Por ejemplo
 
-    const calculo = calcularModeloLoteFijo({
-      demandaAnual: articulo.demandaAnual,
-      costoPedido: articulo.costoPedido,
-      costoAlmacenamiento: articulo.costoAlmacenamiento,
-      desviacionDemandaL: articulo.desviacionDemandaL,
-      nivelServicioDeseado: articulo.nivelServicioDeseado,
-      tiempoEntrega,
-    });
+      const calculo = calcularModeloLoteFijo({
+        demandaAnual: articulo.demandaAnual,
+        costoPedido: articulo.costoPedido,
+        costoAlmacenamiento: articulo.costoAlmacenamiento,
+        desviacionDemandaL: articulo.desviacionDemandaL,
+        nivelServicioDeseado: articulo.nivelServicioDeseado,
+        tiempoEntrega,
+      });
 
-    await prisma.modeloLoteFijo.create({
-      data: {
-        loteOptimo: calculo.loteOptimo,
-        puntoPedido: calculo.puntoPedido,
-        stockSeguridadLot: calculo.stockSeguridadLot,
-        articuloId: articulo.codArticulo,
-      },
-    });
-  }
-} else if (articulo.modeloInventario === 'intervaloFijo') {
-  if (
+      await prisma.modeloLoteFijo.create({
+        data: {
+          loteOptimo: calculo.loteOptimo,
+          puntoPedido: calculo.puntoPedido,
+          stockSeguridadLot: calculo.stockSeguridadLot,
+          articuloId: articulo.codArticulo,
+        },
+      });
+    }
+  } else if (articulo.modeloInventario === 'intervaloFijo') {
+    if (
       articulo.demandaAnual &&
       articulo.desviacionDemandaT &&
       articulo.nivelServicioDeseado
@@ -143,7 +144,7 @@ export const actualizarArticulo = async (
     data,
   });
 
- const tiempoEntrega = 5;
+  const tiempoEntrega = 5;
 
   if (articuloActualizado.modeloInventario === 'lote_fijo') {
     if (
@@ -219,9 +220,28 @@ export const obtenerTodosLosArticulos = async () => {
 
 // ✅ Buscar un artículo por ID
 export const buscarArticuloPorId = async (codArticulo: number) => {
-  return await prisma.articulo.findUnique({
+  const articulo = await prisma.articulo.findUnique({
     where: { codArticulo },
   });
+
+  if (!articulo) return null;
+
+  const proveedores = await prisma.proveedorArticulo.findMany({
+    where: { articuloId: codArticulo },
+    select: {
+      proveedor: {
+        select: {
+          codProveedor: true,
+          nombreProv: true,
+        },
+      },
+    },
+  });
+
+  return {
+    ...articulo,
+    proveedores: proveedores.map((p) => p.proveedor),
+  };
 };
 
 // ✅ Dar de baja un artículo si no tiene OC pendientes/enviadas
