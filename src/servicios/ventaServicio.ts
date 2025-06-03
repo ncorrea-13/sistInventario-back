@@ -65,3 +65,21 @@ export const listarVentas = async () => {
   const ventas = await prisma.venta.findMany();
   return ventas;
 }
+
+export const verDetalleVenta = async (nroVenta: number) => {
+  const venta = await prisma.venta.findUnique({
+    where: { nroVenta },
+    include: {
+      detalles: {
+        include: {
+          articulo: {
+            select: {
+              nombreArticulo: true,
+            },
+          },
+        },
+      },
+    },
+  });
+  return venta;
+}
