@@ -64,9 +64,9 @@ export const crearVenta = async (data: { montoTotalVenta: number; articulos: [{ 
         console.error(`Error procesando el artículo con ID ${articulo.articuloId}:`, error);
         throw error;
       }
-
-      return venta;
     }
+      return venta;
+    
   });
 };
 
