@@ -80,6 +80,7 @@ model Articulo {  //Agregar campo de fecha de peddo para oprimizar el Cron a la 
   desviacionDemandaL       Float
   desviacionDemandaT       Float
   nivelServicioDeseado     Float
+  modeloInventario         String? // Puede ser Fijo o Variable
   proveedorArticulos       ProveedorArticulo[]
   articuloVenta            ArticuloVenta[]
   ordenDetalle             OrdenDetalle[]
