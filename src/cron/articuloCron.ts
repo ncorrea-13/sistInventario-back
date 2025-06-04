@@ -1,6 +1,6 @@
 import cron from 'node-cron';
 import { prisma } from '../prismaClient';
-import { calcularModeloIntervaloFijo } from '../servicios/articuloServicio';
+import { calcularModeloIntervaloFijo } from '../servicios/modeloServicio';
 
 cron.schedule('0 2 * * *', async () => {
   try {

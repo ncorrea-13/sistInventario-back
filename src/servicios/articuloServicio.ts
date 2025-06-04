@@ -1,117 +1,9 @@
 import { prisma } from '../prismaClient';
-import { Prisma } from '@prisma/client';
+import { calcularModeloLoteFijo, calcularModeloIntervaloFijo } from './modeloServicio';
 
-//Calcular CGI
-export const calcularCGI = async (articuloId: number) => {
-  const articulo = await prisma.articulo.findUnique({
-    where: { codArticulo: articuloId },
-    include: {
-      modeloFijoLote: true,
-    },
-  });
-
-  if (!articulo) throw new Error('Artículo no encontrado');
-
-  const {
-    demandaAnual,
-    costoAlmacenamiento,
-    costoPedido,
-    costoCompra,
-    modeloFijoLote,
-  } = articulo;
-
-  if (
-    demandaAnual === null ||
-    costoAlmacenamiento === null ||
-    costoPedido === null ||
-    costoCompra === null ||
-    !modeloFijoLote?.loteOptimo
-  ) {
-    throw new Error('Faltan datos para calcular el CGI');
-  }
-
-  const Q = modeloFijoLote.loteOptimo;
-  const D = demandaAnual;
-  const Ch = costoAlmacenamiento;
-  const Co = costoPedido;
-  const Cu = costoCompra;
-
-  const CGI = (Q / 2) * Ch + (D / Q) * Co + D * Cu;
-
-  return {
-    articulo: articulo.nombreArticulo,
-    CGI: Math.round(CGI * 100) / 100,
-    detalle: {
-      Q,
-      Ch,
-      Co,
-      D,
-      Cu,
-    },
-  };
-};
-// ✅ Calcular modelo de lote fijo
-export function calcularModeloLoteFijo(params: {
-  demandaAnual: number;
-  costoPedido: number;
-  costoAlmacenamiento: number;
-  tiempoEntrega: number;
-  desviacionDemandaL: number;
-  nivelServicioDeseado: number;
-}) {
-  const {
-    demandaAnual,
-    costoPedido,
-    costoAlmacenamiento,
-    tiempoEntrega,
-    desviacionDemandaL,
-    nivelServicioDeseado,
-  } = params;
-
-  const demandaDiaria = demandaAnual / 365;
-
-  const loteOptimo = Math.sqrt((2 * demandaAnual * costoPedido) / costoAlmacenamiento);
-  const stockSeguridadLot = nivelServicioDeseado * desviacionDemandaL;
-  const puntoPedido = demandaDiaria * tiempoEntrega + stockSeguridadLot;
-
-  return {
-    loteOptimo: Math.round(loteOptimo),
-    puntoPedido: Math.round(puntoPedido),
-    stockSeguridadLot: Math.round(stockSeguridadLot),
-  };
-};
-
-// ✅ Calcular modelo de intervalo fijo
-export function calcularModeloIntervaloFijo(params: {
-  demandaAnual: number;
-  desviacionDemandaT: number;
-  nivelServicioDeseado: number;
-  intervaloTiempo: number;
-  tiempoEntrega: number;
-}) {
-  const {
-    demandaAnual,
-    desviacionDemandaT,
-    nivelServicioDeseado,
-    intervaloTiempo,
-    tiempoEntrega,
-  } = params;
-
-  const d = demandaAnual / 365;
-  const T = intervaloTiempo;
-  const L = tiempoEntrega;
-
-  const stockSeguridadInt = nivelServicioDeseado * desviacionDemandaT;
-  const inventarioMaximo = d * (T + L) + stockSeguridadInt;
-
-  return {
-    stockSeguridadInt: Math.round(stockSeguridadInt),
-    inventarioMaximo: Math.round(inventarioMaximo),
-  };
-}
 
 // ✅ Crear un artículo
-export const crearArticulo = async (data: Prisma.ArticuloCreateInput) => {
+export const crearArticulo = async (data: any) => {
 
   const articulo = await prisma.articulo.create({
     data: {
@@ -129,6 +21,14 @@ export const crearArticulo = async (data: Prisma.ArticuloCreateInput) => {
       nivelServicioDeseado: true,
     },
   });
+
+  const proveedor = await prisma.proveedorArticulo.findFirst({
+    where: {
+      articuloId: articulo.codArticulo,
+      predeterminado: true
+    }
+  });
+
   if (articulo.modeloInventario === 'loteFijo') {
     if (
       articulo.demandaAnual &&
@@ -137,16 +37,13 @@ export const crearArticulo = async (data: Prisma.ArticuloCreateInput) => {
       articulo.desviacionDemandaL &&
       articulo.nivelServicioDeseado
     ) {
-      // ⚠️ Tiempo de entrega asumido fijo. Podés mejorarlo buscando el proveedor predeterminado.
-      const tiempoEntrega = 5; // Por ejemplo
-
       const calculo = calcularModeloLoteFijo({
         demandaAnual: articulo.demandaAnual,
         costoPedido: articulo.costoPedido,
         costoAlmacenamiento: articulo.costoAlmacenamiento,
         desviacionDemandaL: articulo.desviacionDemandaL,
         nivelServicioDeseado: articulo.nivelServicioDeseado,
-        tiempoEntrega,
+        tiempoEntrega: proveedor?.demoraEntrega || 5,
       });
 
       await prisma.modeloLoteFijo.create({
@@ -165,14 +62,13 @@ export const crearArticulo = async (data: Prisma.ArticuloCreateInput) => {
       articulo.nivelServicioDeseado
     ) {
       const intervaloTiempo = 7;
-      const tiempoEntrega = 5;
 
       const calculo = calcularModeloIntervaloFijo({
         demandaAnual: articulo.demandaAnual,
         desviacionDemandaT: articulo.desviacionDemandaT,
         nivelServicioDeseado: articulo.nivelServicioDeseado,
         intervaloTiempo,
-        tiempoEntrega,
+        tiempoEntrega: proveedor?.demoraEntrega || 5,
       });
 
       await prisma.modeloInvFijo.create({
@@ -186,17 +82,42 @@ export const crearArticulo = async (data: Prisma.ArticuloCreateInput) => {
   }
   return articulo;
 };
-// ✅ Actualizar un artículo
+
+// Actualizar un artículo
 export const actualizarArticulo = async (
   codArticulo: number,
-  data: Prisma.ArticuloUpdateInput
+  data: any,
+  provId: number
 ) => {
+  const { codArticulo: _, proveedores, ...dataSinCodArticulo } = data;
   const articuloActualizado = await prisma.articulo.update({
     where: { codArticulo },
-    data,
+    data: dataSinCodArticulo,
   });
 
-  const tiempoEntrega = 5;
+  await prisma.proveedorArticulo.updateMany({
+    where: {
+      articuloId: codArticulo,
+      predeterminado: true,
+    },
+    data: { predeterminado: false }
+  });
+
+  await prisma.proveedorArticulo.updateMany({
+    where: {
+      proveedorId: provId,
+      articuloId: codArticulo
+    },
+    data: { predeterminado: true }
+  });
+
+  const tiempoEntrega = await prisma.proveedorArticulo.findFirst({
+    where: {
+      proveedorId: provId,
+      articuloId: codArticulo
+    },
+    select: { demoraEntrega: true },
+  });
 
   if (articuloActualizado.modeloInventario === 'lote_fijo') {
     if (
@@ -212,7 +133,7 @@ export const actualizarArticulo = async (
         costoAlmacenamiento: articuloActualizado.costoAlmacenamiento,
         desviacionDemandaL: articuloActualizado.desviacionDemandaL,
         nivelServicioDeseado: articuloActualizado.nivelServicioDeseado,
-        tiempoEntrega,
+        tiempoEntrega: tiempoEntrega?.demoraEntrega || 5,
       });
 
       await prisma.modeloLoteFijo.upsert({
@@ -240,7 +161,7 @@ export const actualizarArticulo = async (
         desviacionDemandaT: articuloActualizado.desviacionDemandaT,
         nivelServicioDeseado: articuloActualizado.nivelServicioDeseado,
         intervaloTiempo,
-        tiempoEntrega,
+        tiempoEntrega: tiempoEntrega?.demoraEntrega || 5,
       });
 
       await prisma.modeloInvFijo.upsert({
@@ -261,7 +182,6 @@ export const actualizarArticulo = async (
   return articuloActualizado;
 };
 
-// ✅ Obtener todos los artículos (sin baja lógica)
 export const obtenerTodosLosArticulos = async () => {
   return await prisma.articulo.findMany({
     where: {
@@ -270,7 +190,6 @@ export const obtenerTodosLosArticulos = async () => {
   });
 };
 
-// ✅ Buscar un artículo por ID
 export const buscarArticuloPorId = async (codArticulo: number) => {
   const articulo = await prisma.articulo.findUnique({
     where: { codArticulo },
@@ -296,9 +215,18 @@ export const buscarArticuloPorId = async (codArticulo: number) => {
   };
 };
 
-// ✅ Dar de baja un artículo si no tiene OC pendientes/enviadas
 export const darDeBajaArticulo = async (codArticulo: number) => {
-  // Verificar si el artículo tiene órdenes de compra pendientes o enviadas
+  const articulo = await prisma.articulo.findUnique({
+    where: { codArticulo },
+    select: { stockActual: true },
+  });
+
+  if (articulo && articulo.stockActual > 0) {
+    throw new Error(
+      `El artículo con código ${codArticulo} no puede darse de baja porque tiene unidades en stock.`
+    );
+  }
+
   const ordenesPendientesOEnviadas = await prisma.ordenCompra.findMany({
     where: {
       detalles: {
@@ -314,18 +242,6 @@ export const darDeBajaArticulo = async (codArticulo: number) => {
     },
   });
 
-  // Verificar si el artículo tiene unidades en stock
-  const articulo = await prisma.articulo.findUnique({
-    where: { codArticulo },
-    select: { stockActual: true },
-  });
-
-  if (articulo && articulo.stockActual > 0) {
-    throw new Error(
-      `El artículo con código ${codArticulo} no puede darse de baja porque tiene unidades en stock.`
-    );
-  }
-
   if (ordenesPendientesOEnviadas.length > 0) {
     throw new Error(
       `El artículo con código ${codArticulo} no puede darse de baja porque tiene órdenes de compra en estado pendiente o enviada.`
@@ -338,7 +254,6 @@ export const darDeBajaArticulo = async (codArticulo: number) => {
   });
 };
 
-// ✅ Validar stock contra el punto de pedido
 export const validarStockArticulo = async (articuloId: number, puntoPedido: number): Promise<void> => {
   const articuloData = await prisma.articulo.findUnique({
     where: { codArticulo: articuloId },
@@ -351,7 +266,6 @@ export const validarStockArticulo = async (articuloId: number, puntoPedido: numb
   }
 };
 
-// ✅ Obtener proveedor predeterminado de un artículo
 export const obtenerProveedorPredeterminado = async (articuloId: number): Promise<number> => {
   const proveedorPredeterminado = await prisma.proveedorArticulo.findFirst({
     where: {

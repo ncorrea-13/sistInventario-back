@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { crearProveedor, obtenerTodosLosProveedores, darDeBajaProveedor } from '../servicios/proveedorServicio';
-import { prisma } from 'src/prismaClient';
+import { prisma } from '../prismaClient';
 const router = Router();
 
 //GET para obtener todos los proveedores
