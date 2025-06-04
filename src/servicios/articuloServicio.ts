@@ -21,6 +21,14 @@ export const crearArticulo = async (data: any) => {
       nivelServicioDeseado: true,
     },
   });
+
+  const proveedor = await prisma.proveedorArticulo.findFirst({
+    where: {
+      articuloId: articulo.codArticulo,
+      predeterminado: true
+    }
+  });
+
   if (articulo.modeloInventario === 'loteFijo') {
     if (
       articulo.demandaAnual &&
@@ -29,16 +37,13 @@ export const crearArticulo = async (data: any) => {
       articulo.desviacionDemandaL &&
       articulo.nivelServicioDeseado
     ) {
-      // ⚠️ Tiempo de entrega asumido fijo. Podés mejorarlo buscando el proveedor predeterminado.
-      const tiempoEntrega = 5; // Por ejemplo
-
       const calculo = calcularModeloLoteFijo({
         demandaAnual: articulo.demandaAnual,
         costoPedido: articulo.costoPedido,
         costoAlmacenamiento: articulo.costoAlmacenamiento,
         desviacionDemandaL: articulo.desviacionDemandaL,
         nivelServicioDeseado: articulo.nivelServicioDeseado,
-        tiempoEntrega,
+        tiempoEntrega: proveedor?.demoraEntrega || 5,
       });
 
       await prisma.modeloLoteFijo.create({
@@ -57,14 +62,13 @@ export const crearArticulo = async (data: any) => {
       articulo.nivelServicioDeseado
     ) {
       const intervaloTiempo = 7;
-      const tiempoEntrega = 5;
 
       const calculo = calcularModeloIntervaloFijo({
         demandaAnual: articulo.demandaAnual,
         desviacionDemandaT: articulo.desviacionDemandaT,
         nivelServicioDeseado: articulo.nivelServicioDeseado,
         intervaloTiempo,
-        tiempoEntrega,
+        tiempoEntrega: proveedor?.demoraEntrega || 5,
       });
 
       await prisma.modeloInvFijo.create({
@@ -78,7 +82,8 @@ export const crearArticulo = async (data: any) => {
   }
   return articulo;
 };
-// ✅ Actualizar un artículo
+
+// Actualizar un artículo
 export const actualizarArticulo = async (
   codArticulo: number,
   data: any,
@@ -108,7 +113,7 @@ export const actualizarArticulo = async (
 
   const tiempoEntrega = await prisma.proveedorArticulo.findFirst({
     where: {
-      id: provId,
+      proveedorId: provId,
       articuloId: codArticulo
     },
     select: { demoraEntrega: true },
@@ -177,7 +182,6 @@ export const actualizarArticulo = async (
   return articuloActualizado;
 };
 
-// ✅ Obtener todos los artículos (sin baja lógica)
 export const obtenerTodosLosArticulos = async () => {
   return await prisma.articulo.findMany({
     where: {
@@ -186,7 +190,6 @@ export const obtenerTodosLosArticulos = async () => {
   });
 };
 
-// ✅ Buscar un artículo por ID
 export const buscarArticuloPorId = async (codArticulo: number) => {
   const articulo = await prisma.articulo.findUnique({
     where: { codArticulo },
@@ -212,9 +215,18 @@ export const buscarArticuloPorId = async (codArticulo: number) => {
   };
 };
 
-// ✅ Dar de baja un artículo si no tiene OC pendientes/enviadas
 export const darDeBajaArticulo = async (codArticulo: number) => {
-  // Verificar si el artículo tiene órdenes de compra pendientes o enviadas
+  const articulo = await prisma.articulo.findUnique({
+    where: { codArticulo },
+    select: { stockActual: true },
+  });
+
+  if (articulo && articulo.stockActual > 0) {
+    throw new Error(
+      `El artículo con código ${codArticulo} no puede darse de baja porque tiene unidades en stock.`
+    );
+  }
+
   const ordenesPendientesOEnviadas = await prisma.ordenCompra.findMany({
     where: {
       detalles: {
@@ -230,18 +242,6 @@ export const darDeBajaArticulo = async (codArticulo: number) => {
     },
   });
 
-  // Verificar si el artículo tiene unidades en stock
-  const articulo = await prisma.articulo.findUnique({
-    where: { codArticulo },
-    select: { stockActual: true },
-  });
-
-  if (articulo && articulo.stockActual > 0) {
-    throw new Error(
-      `El artículo con código ${codArticulo} no puede darse de baja porque tiene unidades en stock.`
-    );
-  }
-
   if (ordenesPendientesOEnviadas.length > 0) {
     throw new Error(
       `El artículo con código ${codArticulo} no puede darse de baja porque tiene órdenes de compra en estado pendiente o enviada.`
@@ -254,7 +254,6 @@ export const darDeBajaArticulo = async (codArticulo: number) => {
   });
 };
 
-// ✅ Validar stock contra el punto de pedido
 export const validarStockArticulo = async (articuloId: number, puntoPedido: number): Promise<void> => {
   const articuloData = await prisma.articulo.findUnique({
     where: { codArticulo: articuloId },
@@ -267,7 +266,6 @@ export const validarStockArticulo = async (articuloId: number, puntoPedido: numb
   }
 };
 
-// ✅ Obtener proveedor predeterminado de un artículo
 export const obtenerProveedorPredeterminado = async (articuloId: number): Promise<number> => {
   const proveedorPredeterminado = await prisma.proveedorArticulo.findFirst({
     where: {
