@@ -1,117 +1,9 @@
 import { prisma } from '../prismaClient';
-import { Prisma } from '@prisma/client';
+import { calcularModeloLoteFijo, calcularModeloIntervaloFijo } from './modeloServicio';
 
-//Calcular CGI
-export const calcularCGI = async (articuloId: number) => {
-  const articulo = await prisma.articulo.findUnique({
-    where: { codArticulo: articuloId },
-    include: {
-      modeloFijoLote: true,
-    },
-  });
-
-  if (!articulo) throw new Error('Artículo no encontrado');
-
-  const {
-    demandaAnual,
-    costoAlmacenamiento,
-    costoPedido,
-    costoCompra,
-    modeloFijoLote,
-  } = articulo;
-
-  if (
-    demandaAnual === null ||
-    costoAlmacenamiento === null ||
-    costoPedido === null ||
-    costoCompra === null ||
-    !modeloFijoLote?.loteOptimo
-  ) {
-    throw new Error('Faltan datos para calcular el CGI');
-  }
-
-  const Q = modeloFijoLote.loteOptimo;
-  const D = demandaAnual;
-  const Ch = costoAlmacenamiento;
-  const Co = costoPedido;
-  const Cu = costoCompra;
-
-  const CGI = (Q / 2) * Ch + (D / Q) * Co + D * Cu;
-
-  return {
-    articulo: articulo.nombreArticulo,
-    CGI: Math.round(CGI * 100) / 100,
-    detalle: {
-      Q,
-      Ch,
-      Co,
-      D,
-      Cu,
-    },
-  };
-};
-// ✅ Calcular modelo de lote fijo
-export function calcularModeloLoteFijo(params: {
-  demandaAnual: number;
-  costoPedido: number;
-  costoAlmacenamiento: number;
-  tiempoEntrega: number;
-  desviacionDemandaL: number;
-  nivelServicioDeseado: number;
-}) {
-  const {
-    demandaAnual,
-    costoPedido,
-    costoAlmacenamiento,
-    tiempoEntrega,
-    desviacionDemandaL,
-    nivelServicioDeseado,
-  } = params;
-
-  const demandaDiaria = demandaAnual / 365;
-
-  const loteOptimo = Math.sqrt((2 * demandaAnual * costoPedido) / costoAlmacenamiento);
-  const stockSeguridadLot = nivelServicioDeseado * desviacionDemandaL;
-  const puntoPedido = demandaDiaria * tiempoEntrega + stockSeguridadLot;
-
-  return {
-    loteOptimo: Math.round(loteOptimo),
-    puntoPedido: Math.round(puntoPedido),
-    stockSeguridadLot: Math.round(stockSeguridadLot),
-  };
-};
-
-// ✅ Calcular modelo de intervalo fijo
-export function calcularModeloIntervaloFijo(params: {
-  demandaAnual: number;
-  desviacionDemandaT: number;
-  nivelServicioDeseado: number;
-  intervaloTiempo: number;
-  tiempoEntrega: number;
-}) {
-  const {
-    demandaAnual,
-    desviacionDemandaT,
-    nivelServicioDeseado,
-    intervaloTiempo,
-    tiempoEntrega,
-  } = params;
-
-  const d = demandaAnual / 365;
-  const T = intervaloTiempo;
-  const L = tiempoEntrega;
-
-  const stockSeguridadInt = nivelServicioDeseado * desviacionDemandaT;
-  const inventarioMaximo = d * (T + L) + stockSeguridadInt;
-
-  return {
-    stockSeguridadInt: Math.round(stockSeguridadInt),
-    inventarioMaximo: Math.round(inventarioMaximo),
-  };
-}
 
 // ✅ Crear un artículo
-export const crearArticulo = async (data: Prisma.ArticuloCreateInput) => {
+export const crearArticulo = async (data: any) => {
 
   const articulo = await prisma.articulo.create({
     data: {
@@ -189,14 +81,38 @@ export const crearArticulo = async (data: Prisma.ArticuloCreateInput) => {
 // ✅ Actualizar un artículo
 export const actualizarArticulo = async (
   codArticulo: number,
-  data: Prisma.ArticuloUpdateInput
+  data: any,
+  provId: number
 ) => {
+  const { codArticulo: _, proveedores, ...dataSinCodArticulo } = data;
   const articuloActualizado = await prisma.articulo.update({
     where: { codArticulo },
-    data,
+    data: dataSinCodArticulo,
   });
 
-  const tiempoEntrega = 5;
+  await prisma.proveedorArticulo.updateMany({
+    where: {
+      articuloId: codArticulo,
+      predeterminado: true,
+    },
+    data: { predeterminado: false }
+  });
+
+  await prisma.proveedorArticulo.updateMany({
+    where: {
+      proveedorId: provId,
+      articuloId: codArticulo
+    },
+    data: { predeterminado: true }
+  });
+
+  const tiempoEntrega = await prisma.proveedorArticulo.findFirst({
+    where: {
+      id: provId,
+      articuloId: codArticulo
+    },
+    select: { demoraEntrega: true },
+  });
 
   if (articuloActualizado.modeloInventario === 'lote_fijo') {
     if (
@@ -212,7 +128,7 @@ export const actualizarArticulo = async (
         costoAlmacenamiento: articuloActualizado.costoAlmacenamiento,
         desviacionDemandaL: articuloActualizado.desviacionDemandaL,
         nivelServicioDeseado: articuloActualizado.nivelServicioDeseado,
-        tiempoEntrega,
+        tiempoEntrega: tiempoEntrega?.demoraEntrega || 5,
       });
 
       await prisma.modeloLoteFijo.upsert({
@@ -240,7 +156,7 @@ export const actualizarArticulo = async (
         desviacionDemandaT: articuloActualizado.desviacionDemandaT,
         nivelServicioDeseado: articuloActualizado.nivelServicioDeseado,
         intervaloTiempo,
-        tiempoEntrega,
+        tiempoEntrega: tiempoEntrega?.demoraEntrega || 5,
       });
 
       await prisma.modeloInvFijo.upsert({

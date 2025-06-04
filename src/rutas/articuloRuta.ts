@@ -1,9 +1,8 @@
 import { Router } from 'express';
 import { Request, Response } from 'express';
-import { prisma } from '../prismaClient';
-import { crearArticulo, obtenerTodosLosArticulos, buscarArticuloPorId } from '../servicios/articuloServicio';
+import { crearArticulo, obtenerTodosLosArticulos, buscarArticuloPorId, actualizarArticulo } from '../servicios/articuloServicio';
 import { darDeBajaArticulo } from '../servicios/articuloServicio';
-import { calcularCGI } from '../servicios/articuloServicio';
+import { calcularCGI } from '../servicios/modeloServicio';
 const router = Router();
 
 //GET ara buscar todos los artículos
@@ -42,8 +41,9 @@ router.get('/:id', async (req, res) => {
 // PUT para modificar un artículo
 router.put('/:id', async (req: Request, res: Response) => {
   try {
-    const codArticulo = Number(req.params.id);
-    const articulo = await actualizarArticulo(codArticulo, req.body);
+    const provId = 1;
+    const codArticulo = Number(req.body.codArticulo);
+    const articulo = await actualizarArticulo(codArticulo, req.body, provId);
     res.status(200).json(articulo);
   } catch (error: any) {
     console.error(error);
