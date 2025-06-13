@@ -87,6 +87,7 @@ export function calcularModeloIntervaloFijo(params: {
   nivelServicioDeseado: number;
   intervaloTiempo: number;
   tiempoEntrega: number;
+  stockActual: number;
 }) {
   const {
     demandaAnual,
@@ -94,14 +95,15 @@ export function calcularModeloIntervaloFijo(params: {
     nivelServicioDeseado,
     intervaloTiempo,
     tiempoEntrega,
+    stockActual,
   } = params;
 
   const d = demandaAnual / 365;
   const T = intervaloTiempo;
   const L = tiempoEntrega;
 
-  const stockSeguridadInt = nivelServicioDeseado * desviacionDemandaT;
-  const inventarioMaximo = d * (T + L) + stockSeguridadInt;
+  const stockSeguridadInt = nivelServicioDeseado * desviacionDemandaT * (T + L);
+  const inventarioMaximo = d * (T + L) + stockSeguridadInt - stockActual ;
 
   return {
     stockSeguridadInt: Math.round(stockSeguridadInt),

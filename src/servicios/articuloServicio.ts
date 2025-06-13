@@ -19,6 +19,7 @@ export const crearArticulo = async (data: any) => {
       desviacionDemandaL: true,
       desviacionDemandaT: true,
       nivelServicioDeseado: true,
+      stockActual: true,
     },
   });
 
@@ -28,8 +29,8 @@ export const crearArticulo = async (data: any) => {
       predeterminado: true
     }
   });
-
-  if (articulo.modeloInventario === 'loteFijo') {
+  console.log(articulo.modeloInventario);
+  if (articulo.modeloInventario === 'modeloFijoLote') {
     if (
       articulo.demandaAnual &&
       articulo.costoPedido &&
@@ -55,7 +56,7 @@ export const crearArticulo = async (data: any) => {
         },
       });
     }
-  } else if (articulo.modeloInventario === 'intervaloFijo') {
+  } else if (articulo.modeloInventario === 'modeloFijoInventario') {
     if (
       articulo.demandaAnual &&
       articulo.desviacionDemandaT &&
@@ -69,6 +70,7 @@ export const crearArticulo = async (data: any) => {
         nivelServicioDeseado: articulo.nivelServicioDeseado,
         intervaloTiempo,
         tiempoEntrega: proveedor?.demoraEntrega || 5,
+        stockActual: articulo.stockActual || 0,
       });
 
       await prisma.modeloInvFijo.create({
@@ -119,7 +121,7 @@ export const actualizarArticulo = async (
     select: { demoraEntrega: true },
   });
 
-  if (articuloActualizado.modeloInventario === 'lote_fijo') {
+  if (articuloActualizado.modeloInventario === 'modeloFijoLote') {
     if (
       articuloActualizado.demandaAnual &&
       articuloActualizado.costoPedido &&
@@ -149,7 +151,7 @@ export const actualizarArticulo = async (
         },
       });
     }
-  } else if (articuloActualizado.modeloInventario === 'intervalo_fijo') {
+  } else if (articuloActualizado.modeloInventario === 'modeloFijoInventario') {
     if (
       articuloActualizado.demandaAnual &&
       articuloActualizado.desviacionDemandaT &&
@@ -162,6 +164,7 @@ export const actualizarArticulo = async (
         nivelServicioDeseado: articuloActualizado.nivelServicioDeseado,
         intervaloTiempo,
         tiempoEntrega: tiempoEntrega?.demoraEntrega || 5,
+        stockActual: articuloActualizado.stockActual || 0,
       });
 
       await prisma.modeloInvFijo.upsert({
@@ -264,6 +267,49 @@ export const validarStockArticulo = async (articuloId: number, puntoPedido: numb
       `El stock actual del artículo con ID ${articuloId} no es suficiente para generar una Orden de Compra.`
     );
   }
+};
+
+export const articuloStockSeguridad = async () => {
+  const articulosLoteFijo = await prisma.articulo.findMany({
+    where: {
+      fechaBaja: null,
+      modeloInventario: 'modeloFijoLote',
+    },
+    include: {
+      modeloFijoLote: true,
+    },
+  }).then((articulos: any[]) =>
+    articulos.filter(articulo => articulo.stockActual < (articulo.modeloFijoLote?.stockSeguridadLot || 0))
+  );;
+
+  const articulosIntervaloFijo = await prisma.articulo.findMany({
+    where: {
+      fechaBaja: null,
+      modeloInventario: 'modeloFijoInventario',
+    }, 
+    include: {
+      modeloFijoInventario: true,
+    },
+  }).then((articulos: any[])=>
+    articulos.filter(articulo => articulo.stockActual < (articulo.modeloFijoInventario?.stockSeguridadInt || 0))
+  );;
+  
+  const articulosLoteFijoJSON = articulosLoteFijo.map(articulo => ({
+    id: articulo.codArticulo,
+    nombre: articulo.nombreArticulo,
+    stockActual: articulo.stockActual,
+    stockSeguridad: articulo.modeloFijoLote?.stockSeguridadLot || 0,
+  }));
+
+  const articulosIntervaloFijoJSON = articulosIntervaloFijo.map(articulo => ({
+    id: articulo.codArticulo,
+    nombre: articulo.nombreArticulo,
+    stockActual: articulo.stockActual,
+    stockSeguridad: articulo.modeloFijoInventario?.stockSeguridadInt || 0,
+  }));
+
+  const articulosJSON = [...articulosLoteFijoJSON, ...articulosIntervaloFijoJSON];
+  return articulosJSON;
 };
 
 export const obtenerProveedorPredeterminado = async (articuloId: number): Promise<number> => {
