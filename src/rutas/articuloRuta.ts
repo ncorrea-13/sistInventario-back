@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { Request, Response } from 'express';
-import { crearArticulo, obtenerTodosLosArticulos, buscarArticuloPorId, actualizarArticulo } from '../servicios/articuloServicio';
+import { crearArticulo, obtenerTodosLosArticulos, buscarArticuloPorId, actualizarArticulo, articuloStockSeguridad } from '../servicios/articuloServicio';
 import { darDeBajaArticulo } from '../servicios/articuloServicio';
 import { calcularCGI } from '../servicios/modeloServicio';
 const router = Router();
@@ -26,7 +26,16 @@ router.post('/', async (req: Request, res: Response) => {
     res.status(400).json({ error: error.message || 'Error al crear el artículo' });
   }
 });
-
+//Trae los articulos que se encuentran en su stock de seguridad
+router.get('/stockSeguridad', async (req: Request, res: Response) => {
+  try {
+    const resultado = await articuloStockSeguridad();
+    res.status(200).json(resultado);
+  } catch (error: any) {
+    console.error(error);
+    res.status(400).json({ error: error.message });
+  }
+});
 // GET para ver la vista completa de un artículo
 router.get('/:id', async (req, res) => {
   try {

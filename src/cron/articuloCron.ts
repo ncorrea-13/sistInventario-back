@@ -57,6 +57,7 @@ cron.schedule('0 2 * * *', async () => {
         nivelServicioDeseado: articulo.nivelServicioDeseado,
         intervaloTiempo,
         tiempoEntrega,
+        stockActual: articulo.stockActual,
       });
 
       const cantidadSugerida = Math.max(1, Math.round(calculo.inventarioMaximo - articulo.stockActual));

@@ -2,19 +2,17 @@ import { prisma } from '../prismaClient';
 import { generarOrdenCompra } from './ordenCompraServicio';
 
 export const crearVenta = async (data: { montoTotalVenta: number; articulos: [{ articuloId: number; cantidad: number; }]; }) => {
-  return await prisma.$transaction(async (prisma) => {
     const venta = await prisma.venta.create({
       data: {
         fechaVenta: new Date(),
         montoTotalVenta: data.montoTotalVenta,
       },
     });
-
+     
     for (const articulo of data.articulos) {
       try {
 
-        crearArticuloVenta(venta.nroVenta, articulo);
-
+        await crearArticuloVenta(venta.nroVenta, articulo);
         // Verificar el stock actual del artículo
         const articuloStock = await prisma.articulo.findUnique({
           where: { codArticulo: articulo.articuloId },
@@ -54,7 +52,7 @@ export const crearVenta = async (data: { montoTotalVenta: number; articulos: [{ 
             continue;
           }
 
-          if (articuloStock.stockActual >= modeloLoteFijo.puntoPedido) {
+          if (articuloStock.stockActual <= modeloLoteFijo.puntoPedido) {
             // Generar una orden de compra en estado pendiente
             await generarOrdenCompra(articulo.articuloId, modeloLoteFijo.puntoPedido);
           }
@@ -65,14 +63,13 @@ export const crearVenta = async (data: { montoTotalVenta: number; articulos: [{ 
         throw error;
       }
     }
-      return venta;
-    
-  });
-};
+    return venta;
+
+  };
 
 
 const crearArticuloVenta = async (nroVenta: number, articulo: { articuloId: number; cantidad: number; }) => {
-  await prisma.articuloVenta.create({
+ await prisma.articuloVenta.create({
     data: {
       VentaId: nroVenta,
       ArticuloId: articulo.articuloId,

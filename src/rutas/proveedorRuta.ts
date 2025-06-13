@@ -37,7 +37,7 @@ router.patch('/:id/baja', async (req, res) => {
 });
 
 // POST /api/proveedores/:id/asociar-articulo
-router.post('/api/proveedores/:id/asociar-articulo', async (req, res) => {
+router.post('/:id/asociar-articulo', async (req, res) => {
   const proveedorId = parseInt(req.params.id);
   const { articuloId, precioUnitaria, demoraEntrega, cargoPedido, predeterminado } = req.body;
   try {
@@ -60,7 +60,7 @@ router.post('/api/proveedores/:id/asociar-articulo', async (req, res) => {
 });
 
 // GET /api/proveedores/:id/articulos
-router.get('/api/proveedores/:id/articulos', async (req, res) => {
+router.get('/:id/articulos', async (req, res) => {
   const proveedorId = parseInt(req.params.id);
   try {
     const articulos = await prisma.proveedorArticulo.findMany({
@@ -74,7 +74,7 @@ router.get('/api/proveedores/:id/articulos', async (req, res) => {
 });
 
 // DELETE /api/proveedores/:id/articulos/:articuloId
-router.delete('/api/proveedores/:id/articulos/:articuloId', async (req, res) => {
+router.delete('/:id/articulos/:articuloId', async (req, res) => {
   const proveedorId = parseInt(req.params.id);
   const articuloId = parseInt(req.params.articuloId);
   try {
