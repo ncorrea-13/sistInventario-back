@@ -1,11 +1,11 @@
 import { Router } from 'express';
 import { Request, Response } from 'express';
-import { crearArticulo, obtenerTodosLosArticulos, buscarArticuloPorId, actualizarArticulo, articuloStockSeguridad } from '../servicios/articuloServicio';
+import { crearArticulo, obtenerTodosLosArticulos, buscarArticuloPorId, actualizarArticulo, articuloStockSeguridad, articulosAReponer, ajusteInventario } from '../servicios/articuloServicio';
 import { darDeBajaArticulo } from '../servicios/articuloServicio';
 import { calcularCGI } from '../servicios/modeloServicio';
 const router = Router();
 
-//GET ara buscar todos los artículos
+//GET para buscar todos los artículos
 router.get('/', async (req, res) => {
   try {
     const articulos = await obtenerTodosLosArticulos();
@@ -26,7 +26,19 @@ router.post('/', async (req: Request, res: Response) => {
     res.status(400).json({ error: error.message || 'Error al crear el artículo' });
   }
 });
-//Trae los articulos que se encuentran en su stock de seguridad
+
+// GET para obtener los artículos a reponer
+router.get('/reponer', async (req: Request, res: Response) => {
+  try {
+    const articulos = await articulosAReponer();
+    res.status(200).json(articulos);
+  } catch (error: any) {
+    console.error(error);
+    res.status(400).json({ error: error.message || 'Error al obtener los artículos a reponer' });
+  }
+});
+
+//GET para obtener los articulos faltantes
 router.get('/stockSeguridad', async (req: Request, res: Response) => {
   try {
     const resultado = await articuloStockSeguridad();
@@ -36,6 +48,7 @@ router.get('/stockSeguridad', async (req: Request, res: Response) => {
     res.status(400).json({ error: error.message });
   }
 });
+
 // GET para ver la vista completa de un artículo
 router.get('/:id', async (req, res) => {
   try {
@@ -47,6 +60,7 @@ router.get('/:id', async (req, res) => {
     res.status(500).json({ error: 'Error al obtener los artículos' });
   }
 });
+
 // PUT para modificar un artículo
 router.put('/:id', async (req: Request, res: Response) => {
   try {
@@ -57,6 +71,18 @@ router.put('/:id', async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error(error);
     res.status(400).json({ error: error.message || 'Error al modificar el artículo' });
+  }
+});
+// PUT para ajustar el inventario de un artículo
+router.put('/:id/inventario', async (req: Request, res: Response) => {
+  try {
+    const codArticulo = Number(req.params.id);
+    const { nuevoStock } = req.body;
+    const articuloActualizado = await ajusteInventario(codArticulo, Number(nuevoStock));
+    res.status(200).json(articuloActualizado);
+  } catch (error) {
+    console.error(error);
+    res.status(400).json({ error: 'Error al ajustar el inventario del artículo.' });
   }
 });
 

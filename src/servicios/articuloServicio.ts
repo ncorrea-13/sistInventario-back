@@ -269,6 +269,67 @@ export const validarStockArticulo = async (articuloId: number, puntoPedido: numb
   }
 };
 
+//Listado de articulos a reponer
+
+export const articulosAReponer = async () => {
+  // Artículos con modeloFijoLote
+  const articulosLoteFijo = await prisma.articulo.findMany({
+    where: {
+      fechaBaja: null,
+      modeloInventario: 'modeloFijoLote',
+    },
+    include: {
+      modeloFijoLote: true,
+      proveedorArticulos: {
+        where: { predeterminado: true },
+        select: { demoraEntrega: true }
+      }
+    },
+  });
+
+  // Filtrar artículos cuyo stockActual < puntoPedido y sin OC pendientes/enviadas
+  const articulosLoteFijoFiltrados = await Promise.all(
+    articulosLoteFijo.map(async (articulo: any) => {
+      const demandaDiaria = articulo.demandaAnual ? articulo.demandaAnual / 365 : 0;
+      const tiempoEntrega = articulo.proveedorArticulo[0]?.demoraEntrega || 5;
+      const stockSeguridadLot = articulo.modeloFijoLote?.stockSeguridadLot || 0;
+      const puntoPedido = demandaDiaria * tiempoEntrega + stockSeguridadLot;
+
+      if (articulo.stockActual < puntoPedido) {
+        const ordenes = await prisma.ordenCompra.findMany({
+          where: {
+            detalles: {
+              some: {
+                articuloId: articulo.codArticulo,
+              },
+            },
+            ordenEstado: {
+              nombreEstadoOrden: {
+                in: ['pendiente', 'enviada'],
+              },
+            },
+          },
+        });
+        if (ordenes.length === 0) {
+          return {
+            id: articulo.codArticulo,
+            nombre: articulo.nombreArticulo,
+            stockActual: articulo.stockActual,
+            puntoPedido: Math.round(puntoPedido),
+          };
+        }
+      }
+      return null;
+    })
+  );
+
+  // Solo los que cumplen la condición
+  const articulosJSON = articulosLoteFijoFiltrados.filter(Boolean);
+
+  return articulosJSON;
+};
+
+//Listado de articulos faltantes
 export const articuloStockSeguridad = async () => {
   const articulosLoteFijo = await prisma.articulo.findMany({
     where: {
@@ -328,5 +389,18 @@ export const obtenerProveedorPredeterminado = async (articuloId: number): Promis
 
   return proveedorPredeterminado.proveedorId;
 };
+//Funcion para solo ajustar las cantidades de un artículo
+export const ajusteInventario = async (codArticulo: number, nuevoStock: number) => {
+  if (nuevoStock < 0) {
+    throw new Error('El nuevo stock no puede ser un número negativo.');
+  }
 
-
+  return await prisma.articulo.update({
+    where: { codArticulo },
+    data: { stockActual: nuevoStock },
+    select: {
+      codArticulo: true,
+      stockActual: true,
+    },
+  });
+};

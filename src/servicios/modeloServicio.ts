@@ -62,13 +62,13 @@ export function calcularModeloLoteFijo(params: {
     demandaAnual,
     costoPedido,
     costoAlmacenamiento,
-    tiempoEntrega,
+    tiempoEntrega ,
     desviacionDemandaL,
     nivelServicioDeseado,
   } = params;
 
   const demandaDiaria = demandaAnual / 365;
-
+  
   const loteOptimo = Math.sqrt((2 * demandaAnual * costoPedido) / costoAlmacenamiento);
   const stockSeguridadLot = nivelServicioDeseado * desviacionDemandaL;
   const puntoPedido = demandaDiaria * tiempoEntrega + stockSeguridadLot;
