@@ -63,3 +63,30 @@ export const asignarArticuloAProveedor = async (proveedorId: number, articuloId:
     }
   });
 }
+
+export const buscarArticulosPorProveedor = async (proveedorId: number) => {
+  return await prisma.proveedorArticulo.findMany({
+    where: {
+      proveedorId,
+      proveedor: {
+        fechaBajaProveedor: null,
+      },
+    },
+    include: { articulo: true },
+  });
+};
+
+export const eliminarAsociacionArticuloProveedor = async (proveedorId: number, articuloId: number) => {
+  await prisma.proveedorArticulo.deleteMany({
+    where: {
+      proveedorId,
+      articuloId,
+      proveedor: {
+        fechaBajaProveedor: null,
+      },
+      articulo: {
+        fechaBaja: null,
+      }
+    },
+  });
+};

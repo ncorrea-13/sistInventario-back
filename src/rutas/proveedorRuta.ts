@@ -1,9 +1,8 @@
 import { Router } from 'express';
-import { crearProveedor, obtenerTodosLosProveedores, darDeBajaProveedor } from '../servicios/proveedorServicio';
-import { prisma } from '../prismaClient';
+import { crearProveedor, asignarArticuloAProveedor, obtenerTodosLosProveedores, darDeBajaProveedor, buscarArticulosPorProveedor, eliminarAsociacionArticuloProveedor } from '../servicios/proveedorServicio';
 const router = Router();
 
-//GET para obtener todos los proveedores
+//GET /api/proveedores PARA OBTENER TODOS LOS PROVEEDORES
 router.get('/', async (req, res) => {
   try {
     const proveedores = await obtenerTodosLosProveedores();
@@ -14,7 +13,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// POST para crear un nuevo proveedor
+// POST /api/proveedores PARA CREAR UN NUEVO PROVEEDOR
 router.post('/', async (req, res) => {
   try {
     const nuevoProveedor = await crearProveedor(req.body);
@@ -25,65 +24,47 @@ router.post('/', async (req, res) => {
   }
 });
 
-// PATCH para dar de baja un proveedor
-router.patch('/:id/baja', async (req, res) => {
+
+// PATCH /api/proveedores/:id PARA DAR DE BAJA
+router.patch('/:id', async (req, res) => {
   try {
     const codProveedor = Number(req.params.id);
     const proveedorBaja = await darDeBajaProveedor(codProveedor);
     res.status(200).json(proveedorBaja);
   } catch (error: any) {
-    res.status(400).json({ error: error.message || 'No se pudo dar de baja el proveedor' });
+    res.status(500).json({ error: error.message || 'No se pudo dar de baja el proveedor' });
   }
 });
 
-// POST /api/proveedores/:id/asociar-articulo
-router.post('/:id/asociar-articulo', async (req, res) => {
-  const proveedorId = parseInt(req.params.id);
-  const { articuloId, precioUnitaria, demoraEntrega, cargoPedido, predeterminado } = req.body;
+// GET /api/proveedores/:id/articulos PARA OBTENER ARTICULOS DE UN PROVEEDOR
+router.get('/:id', async (req, res) => {
+  const proveedorId = Number(req.params.id);
   try {
-
-
-    const nuevaAsociacion = await prisma.proveedorArticulo.create({
-      data: {
-        proveedorId,
-        articuloId,
-        precioUnitaria,
-        demoraEntrega,
-        cargoPedido,
-        predeterminado,
-      },
-    });
-    res.status(201).json(nuevaAsociacion);
-  } catch (error) {
-    res.status(500).json({ error: 'Error al asociar el artículo al proveedor.' });
-  }
-});
-
-// GET /api/proveedores/:id/articulos
-router.get('/:id/articulos', async (req, res) => {
-  const proveedorId = parseInt(req.params.id);
-  try {
-    const articulos = await prisma.proveedorArticulo.findMany({
-      where: { proveedorId },
-      include: { articulo: true },
-    });
+    const articulos = await buscarArticulosPorProveedor(proveedorId);
     res.status(200).json(articulos);
   } catch (error) {
     res.status(500).json({ error: 'Error al obtener los artículos del proveedor.' });
   }
 });
 
-// DELETE /api/proveedores/:id/articulos/:articuloId
-router.delete('/:id/articulos/:articuloId', async (req, res) => {
-  const proveedorId = parseInt(req.params.id);
-  const articuloId = parseInt(req.params.articuloId);
+// POST /api/proveedores/:id/articulos ASIGNAR ARTICULO A PROVEEDOR
+router.post('/:id', async (req, res) => {
   try {
-    await prisma.proveedorArticulo.deleteMany({
-      where: {
-        proveedorId,
-        articuloId,
-      },
-    });
+    const proveedorId = parseInt(req.params.id);
+    const { articuloId, precioUnitaria, demoraEntrega, cargoPedido, predeterminado } = req.body;
+    const nuevaAsociacion = await asignarArticuloAProveedor(proveedorId, articuloId, cargoPedido, demoraEntrega, precioUnitaria, predeterminado);
+    res.status(200).json(nuevaAsociacion);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al asociar el artículo al proveedor.' });
+  }
+});
+
+// DELETE /api/proveedores/:id/:articuloId ELIMINAR ASOCIACION ARTICULO PROVEEDOR
+router.delete('/:id/:articuloId', async (req, res) => {
+  try {
+    const proveedorId = parseInt(req.params.id);
+    const articuloId = parseInt(req.params.articuloId);
+    eliminarAsociacionArticuloProveedor(proveedorId, articuloId);
     res.status(200).json({ message: 'Asociación eliminada correctamente.' });
   } catch (error) {
     res.status(500).json({ error: 'Error al eliminar la asociación.' });
