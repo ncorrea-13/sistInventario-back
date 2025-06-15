@@ -194,7 +194,7 @@ export const obtenerTodosLosArticulos = async () => {
 };
 
 export const buscarArticuloPorId = async (codArticulo: number) => {
-  const articulo = await prisma.articulo.findUnique({
+  return await prisma.articulo.findUnique({
     where: { codArticulo },
   });
 

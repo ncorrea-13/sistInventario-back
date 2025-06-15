@@ -19,33 +19,35 @@ cron.schedule('0 2 * * *', async () => {
     console.log(`📦 Se encontraron ${modelos.length} artículos con modelo de intervalo fijo.`);
 
     for (const modelo of modelos) {
-      const { articulo } = modelo;
-      const proveedorPredeterminado = articulo.proveedorArticulos.find(p => p.predeterminado);
+      const { articulo, stockSeguridadInt } = modelo;
 
-      if (!proveedorPredeterminado) {
-        console.warn(`❌ No se encontró proveedor predeterminado para el artículo ${articulo.codArticulo}`);
-        continue;
-      }
+      if (articulo.stockActual <= stockSeguridadInt) {
+        const proveedorPredeterminado = articulo.proveedorArticulos.find(p => p.predeterminado);
 
-      const ocExistente = await prisma.ordenCompra.findFirst({
-        where: {
-          detalles: {
-            some: {
-              articuloId: articulo.codArticulo,
+        if (!proveedorPredeterminado) {
+          console.warn(`❌ No se encontró proveedor predeterminado para el artículo ${articulo.codArticulo}`);
+          continue;
+        }
+
+        const ocExistente = await prisma.ordenCompra.findFirst({
+          where: {
+            detalles: {
+              some: {
+                articuloId: articulo.codArticulo,
+              },
+            },
+            ordenEstado: {
+              nombreEstadoOrden: {
+                in: ['pendiente', 'enviada'],
+              },
             },
           },
-          ordenEstado: {
-            nombreEstadoOrden: {
-              in: ['pendiente', 'enviada'],
-            },
-          },
-        },
-      });
+        });
 
-      if (ocExistente) {
-        console.log(`🔁 Ya existe OC activa para artículo ${articulo.codArticulo}`);
-        continue;
-      }
+        if (ocExistente) {
+          console.log(`🔁 Ya existe OC activa para artículo ${articulo.codArticulo}`);
+          continue;
+        }
 
       // Parámetros para el cálculo
       const intervaloTiempo = modelo.intervaloTiempo;
@@ -57,28 +59,29 @@ cron.schedule('0 2 * * *', async () => {
         nivelServicioDeseado: articulo.nivelServicioDeseado,
         intervaloTiempo,
         tiempoEntrega,
-        stockActual: articulo.stockActual,
       });
 
       const cantidadSugerida = Math.max(1, Math.round(calculo.inventarioMaximo - articulo.stockActual));
 
-      await prisma.ordenCompra.create({
-        data: {
-          tamanoLote: cantidadSugerida,
-          montoOrden: articulo.costoCompra * cantidadSugerida,
-          proveedorId: proveedorPredeterminado.proveedorId,
-          ordenEstadoId: 1, // Estado "pendiente"
-          detalles: {
-            create: [
-              {
-                articuloId: articulo.codArticulo,
+          await prisma.ordenCompra.create({
+            data: {
+              tamanoLote: cantidadSugerida,
+              montoOrden: articulo.costoCompra * cantidadSugerida,
+              proveedorId: proveedorPredeterminado.proveedorId,
+              ordenEstadoId: 1, // Estado "pendiente"
+              detalles: {
+                create: [{
+                  articuloId: articulo.codArticulo,
+                }],
               },
-            ],
-          },
-        },
-      });
+            },
+          });
 
-      console.log(`✅ OC creada para artículo ${articulo.nombreArticulo}`);
+          console.log(`✅ OC creada para artículo ${articulo.nombreArticulo}`);
+        } else {
+          console.warn(`⚠️ Faltan datos para calcular q del artículo ${articulo.codArticulo}`);
+        }
+      }
     }
   } catch (error) {
     console.error('❌ Error al ejecutar el cron:', error);

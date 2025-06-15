@@ -24,33 +24,33 @@ export const crearVenta = async (data: { montoTotalVenta: number; articulos: [{ 
           continue;
         }
 
-        // Actualizar el stock del artículo
-        await prisma.articulo.update({
-          where: { codArticulo: articulo.articuloId },
-          data: {
-            stockActual: {
-              decrement: articulo.cantidad,
-            },
-          },
-        });
+    // Actualizar el stock del artículo
+    await prisma.articulo.update({
+      where: { codArticulo: articulo.articuloId },
+      data: {
+        stockActual: {
+          decrement: articulo.cantidad,
+        },
+      },
+    });
+    const modeloLoteFijo = await prisma.modeloLoteFijo.findFirst({
+      where: { articuloId: articulo.articuloId },
+    });
 
-        // Verificar el stock actual del artículo
-        const modelo = await prisma.articulo.findUnique({
-          where: { codArticulo: articulo.articuloId },
-          select: { modeloInventario: true }
-        });
-        if (!modelo) {
-          continue;
-        }
-        if (modelo.modeloInventario === "LoteFijo") {
-          const modeloLoteFijo = await prisma.modeloLoteFijo.findFirst({
-            where: { articuloId: articulo.articuloId },
-          });
+    if (!modeloLoteFijo) {
+      throw new Error(`No se encontró un modelo de lote fijo para el artículo con ID ${articulo.articuloId}`);
+    }
 
-          if (!modeloLoteFijo) {
-            console.warn(`No se encontró un modelo de lote fijo para el artículo con ID ${articulo.articuloId}`);
-            continue;
-          }
+    // Verificar el stock actual del artículo
+    const articuloStock = await prisma.articulo.findUnique({
+      where: { codArticulo: articulo.articuloId },
+      select: { stockActual: true },
+    });
+
+
+    if (!articuloStock) {
+      throw new Error(`No se encontró información de stock para el artículo con ID ${articulo.articuloId}`);
+    }
 
           if (articuloStock.stockActual <= modeloLoteFijo.puntoPedido) {
             // Generar una orden de compra en estado pendiente
@@ -82,22 +82,4 @@ const crearArticuloVenta = async (nroVenta: number, articulo: { articuloId: numb
 export const listarVentas = async () => {
   const ventas = await prisma.venta.findMany();
   return ventas;
-}
-
-export const verDetalleVenta = async (nroVenta: number) => {
-  const venta = await prisma.venta.findUnique({
-    where: { nroVenta },
-    include: {
-      detalles: {
-        include: {
-          articulo: {
-            select: {
-              nombreArticulo: true,
-            },
-          },
-        },
-      },
-    },
-  });
-  return venta;
 }
