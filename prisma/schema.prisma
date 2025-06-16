@@ -8,102 +8,103 @@ datasource db {
 }
 
 model Proveedor {
-  codProveedor        Int    @id @default(autoincrement())
-  fechaBajaProveedor  DateTime?
-  nombreProv          String
-  articulos           ProveedorArticulo[]
-  ordenesCompra       OrdenCompra[]
+  codProveedor       Int                 @id @default(autoincrement())
+  fechaBajaProveedor DateTime?
+  nombreProv         String
+  articulos          ProveedorArticulo[]
+  ordenesCompra      OrdenCompra[]
 }
 
-model ModeloLoteFijo { //Revisa cada vez que vende. Controla que cruzaste la cantidad de stock y lote
-  id                  Int    @id @default(autoincrement())
-  loteOptimo          Int
-  puntoPedido         Int
-  stockSeguridadLot   Int //Lit Time, demanda diaria
-  articuloId          Int    @unique
-  articulo            Articulo @relation(fields: [articuloId], references: [codArticulo])
+model ModeloLoteFijo {
+  id                Int      @id @default(autoincrement())
+  loteOptimo        Int
+  puntoPedido       Int
+  stockSeguridadLot Int //Lit Time, demanda diaria
+  articuloId        Int      @unique
+  articulo          Articulo @relation(fields: [articuloId], references: [codArticulo])
 }
 
-model ModeloInvFijo { //Cron que se ejecute una ve al día y actualice los procesos. Mira hora y zona horarioa para actualizar. También a quien le toca.
-  id                  Int    @id @default(autoincrement())
-  intervaloTiempo     Int
-  stockSeguridadInt   Int
-  articuloId          Int    @unique
-  articulo            Articulo @relation(fields: [articuloId], references: [codArticulo])
+model ModeloInvFijo {
+  id                Int      @id @default(autoincrement())
+  intervaloTiempo   Int
+  tiempoActual      Int
+  stockSeguridadInt Int
+  articuloId        Int      @unique
+  articulo          Articulo @relation(fields: [articuloId], references: [codArticulo])
 }
 
 model ArticuloVenta {
-  id                 Int    @id @default(autoincrement())
-  cantidadArticulo   Int
-  VentaId            Int
-  ArticuloId         Int
-  venta              Venta @relation(fields: [VentaId], references: [nroVenta])
-  articulo           Articulo @relation(fields: [ArticuloId], references: [codArticulo])
+  id               Int      @id @default(autoincrement())
+  cantidadArticulo Int
+  VentaId          Int
+  ArticuloId       Int
+  venta            Venta    @relation(fields: [VentaId], references: [nroVenta])
+  articulo         Articulo @relation(fields: [ArticuloId], references: [codArticulo])
 }
 
 model Venta {
-  nroVenta           Int    @id @default(autoincrement())
-  fechaVenta         DateTime
-  montoTotalVenta    Float
-  detalles           ArticuloVenta[]
+  nroVenta        Int             @id @default(autoincrement())
+  fechaVenta      DateTime
+  montoTotalVenta Float
+  detalles        ArticuloVenta[]
 }
 
 model OrdenCompra {
-  numOrdenCompra     Int    @id @default(autoincrement())
-  tamanoLote         Int
-  montoOrden         Float
-  proveedorId        Int
-  proveedor          Proveedor @relation(fields: [proveedorId], references: [codProveedor])
-  detalles           OrdenDetalle[]
-  ordenEstadoId      Int
-  ordenEstado        EstadoOrden @relation(fields: [ordenEstadoId], references: [codEstadoOrden])
+  numOrdenCompra Int            @id @default(autoincrement())
+  tamanoLote     Int
+  montoOrden     Float
+  proveedorId    Int
+  proveedor      Proveedor      @relation(fields: [proveedorId], references: [codProveedor])
+  detalles       OrdenDetalle[]
+  ordenEstadoId  Int
+  ordenEstado    EstadoOrden    @relation(fields: [ordenEstadoId], references: [codEstadoOrden])
 }
 
 model EstadoOrden {
-  codEstadoOrden         Int    @id @default(autoincrement())
-  nombreEstadoOrden      String
-  fechaBajaEstadoOrden   DateTime?
-  ordenesCompra          OrdenCompra[]
+  codEstadoOrden       Int           @id @default(autoincrement())
+  nombreEstadoOrden    String
+  fechaBajaEstadoOrden DateTime?
+  ordenesCompra        OrdenCompra[]
 }
 
-model Articulo {  //Agregar campo de fecha de peddo para oprimizar el Cron a la hora de la compra.
-  codArticulo              Int    @id @default(autoincrement())
-  nombreArticulo           String
-  descripcionArticulo      String
-  fechaBaja                DateTime?
-  stockActual              Int  //Ajuste de inventario. Sin hacer la compra automática, ni saltar por la venta.
-  costoAlmacenamiento      Float
-  costoCompra              Float
-  costoPedido              Float
-  costoMantenimiento       Float
-  demandaAnual             Float //se carga a mano porque no hay módulo, puede sufrir alteraciones mientras va evolucionando
-  desviacionDemandaL       Float
-  desviacionDemandaT       Float
-  nivelServicioDeseado     Float
-  modeloInventario         String? // Puede ser Fijo o Variable
-  proveedorArticulos       ProveedorArticulo[]
-  articuloVenta            ArticuloVenta[]
-  ordenDetalle             OrdenDetalle[]
-  modeloFijoLote           ModeloLoteFijo?
-  modeloFijoInventario     ModeloInvFijo?
+model Articulo {
+  codArticulo          Int                 @id @default(autoincrement())
+  nombreArticulo       String
+  descripcionArticulo  String
+  fechaBaja            DateTime?
+  stockActual          Int //Ajuste de inventario. Sin hacer la compra automática, ni saltar por la venta.
+  costoAlmacenamiento  Float
+  costoCompra          Float
+  costoPedido          Float
+  costoMantenimiento   Float
+  demandaAnual         Float //se carga a mano porque no hay módulo, puede sufrir alteraciones mientras va evolucionando
+  desviacionDemandaL   Float
+  desviacionDemandaT   Float
+  nivelServicioDeseado Float
+  modeloInventario     String? // Puede ser Fijo o Variable
+  proveedorArticulos   ProveedorArticulo[]
+  articuloVenta        ArticuloVenta[]
+  ordenDetalle         OrdenDetalle[]
+  modeloFijoLote       ModeloLoteFijo?
+  modeloFijoInventario ModeloInvFijo?
 }
 
 model ProveedorArticulo {
-  id               Int    @id @default(autoincrement())
-  cargoPedido      Float
-  demoraEntrega    Int
-  precioUnitaria   Float
-  predeterminado   Boolean
-  proveedorId      Int
-  articuloId       Int
-  proveedor        Proveedor @relation(fields: [proveedorId], references: [codProveedor])
-  articulo         Articulo @relation(fields: [articuloId], references: [codArticulo])
+  id             Int       @id @default(autoincrement())
+  cargoPedido    Float
+  demoraEntrega  Int
+  precioUnitaria Float
+  predeterminado Boolean
+  proveedorId    Int
+  articuloId     Int
+  proveedor      Proveedor @relation(fields: [proveedorId], references: [codProveedor])
+  articulo       Articulo  @relation(fields: [articuloId], references: [codArticulo])
 }
 
 model OrdenDetalle {
-  id               Int    @id @default(autoincrement())
-  ordenCompraId    Int
-  articuloId       Int
-  ordenCompra      OrdenCompra @relation(fields: [ordenCompraId], references: [numOrdenCompra])
-  articulo         Articulo @relation(fields: [articuloId], references: [codArticulo])
+  id            Int         @id @default(autoincrement())
+  ordenCompraId Int
+  articuloId    Int
+  ordenCompra   OrdenCompra @relation(fields: [ordenCompraId], references: [numOrdenCompra])
+  articulo      Articulo    @relation(fields: [articuloId], references: [codArticulo])
 }

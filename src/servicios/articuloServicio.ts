@@ -78,6 +78,7 @@ export const crearArticulo = async (data: any) => {
           intervaloTiempo,
           stockSeguridadInt: calculo.stockSeguridadInt,
           articuloId: articulo.codArticulo,
+          tiempoActual: intervaloTiempo, // Inicializar el tiempo actual al intervalo
         },
       });
     }
@@ -177,6 +178,7 @@ export const actualizarArticulo = async (
           intervaloTiempo,
           stockSeguridadInt: calculo.stockSeguridadInt,
           articuloId: codArticulo,
+          tiempoActual: intervaloTiempo, // Inicializar el tiempo actual al intervalo
         },
       });
     }
