@@ -64,8 +64,8 @@ router.get('/:id', async (req, res) => {
 // PUT para modificar un artículo
 router.put('/:id', async (req: Request, res: Response) => {
   try {
-    const provId = 1;
-    const codArticulo = Number(req.body.codArticulo);
+    const provId = req.body.provId;
+    const codArticulo = Number(req.params.id);
     const articulo = await actualizarArticulo(codArticulo, req.body, provId);
     res.status(200).json(articulo);
   } catch (error: any) {
