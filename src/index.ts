@@ -6,6 +6,7 @@ import ordenCompraRuta from './rutas/ordenCompraRuta';
 import ventaRuta from './rutas/ventaRuta';
 import { prisma } from "./prismaClient";
 import './cron/articuloCron';
+import cronRuta from './rutas/cronRuta';
 
 
 const app = express();
@@ -21,6 +22,7 @@ app.use('/api/articulo', articuloRuta);
 app.use('/api/proveedor', proveedorRuta);
 app.use('/api/ordenCompra', ordenCompraRuta);
 app.use('/api/venta', ventaRuta);
+app.use('/api/cron', cronRuta); // Ruta accesible como /cron/manual
 
 (async () => {
   try {

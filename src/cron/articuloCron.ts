@@ -2,9 +2,9 @@ import cron from 'node-cron';
 import { prisma } from '../prismaClient';
 import { calcularModeloIntervaloFijo } from '../servicios/modeloServicio';
 
-cron.schedule('0 2 * * *', async () => {
+export const ejecutarRevisiónIntervaloFijo = async () => {
   try {
-    console.log('⏰ Ejecutando revisión automática del modelo de intervalo fijo...');
+    console.log('⏰ Ejecutando revisión del modelo de intervalo fijo...');
 
     const modelos = await prisma.modeloInvFijo.findMany({
       include: {
@@ -47,8 +47,23 @@ cron.schedule('0 2 * * *', async () => {
         continue;
       }
 
-      // Parámetros para el cálculo
       const intervaloTiempo = modelo.intervaloTiempo;
+      const intervaloActual = modelo.tiempoActual;
+
+      if (intervaloActual != 0) {
+        console.warn(`Hoy no es día de revisión del artículo ${articulo.codArticulo}`);
+        await prisma.modeloInvFijo.update({
+          where: { id: modelo.id },
+          data: { tiempoActual: intervaloActual - 1 },
+        });
+        continue;
+      } else {
+        await prisma.modeloInvFijo.update({
+          where: { id: modelo.id },
+          data: { tiempoActual: intervaloTiempo },
+        });
+      }
+
       const tiempoEntrega = proveedorPredeterminado.demoraEntrega;
 
       const calculo = calcularModeloIntervaloFijo({
@@ -67,7 +82,7 @@ cron.schedule('0 2 * * *', async () => {
           tamanoLote: cantidadSugerida,
           montoOrden: articulo.costoCompra * cantidadSugerida,
           proveedorId: proveedorPredeterminado.proveedorId,
-          ordenEstadoId: 1, // Estado "pendiente"
+          ordenEstadoId: 1,
           detalles: {
             create: [
               {
@@ -83,4 +98,7 @@ cron.schedule('0 2 * * *', async () => {
   } catch (error) {
     console.error('❌ Error al ejecutar el cron:', error);
   }
-});
+};
+
+// ⏰ Este es el cron programado automáticamente (mantener para producción)
+cron.schedule('0 2 * * *', ejecutarRevisiónIntervaloFijo);
