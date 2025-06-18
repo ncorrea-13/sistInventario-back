@@ -90,7 +90,6 @@ export const crearArticulo = async (data: any) => {
 export const actualizarArticulo = async (
   codArticulo: number,
   data: any,
-  provId: number
 ) => {
   const { codArticulo: _, proveedores, ...dataSinCodArticulo } = data;
   const articuloActualizado = await prisma.articulo.update({
@@ -98,25 +97,9 @@ export const actualizarArticulo = async (
     data: dataSinCodArticulo,
   });
 
-  await prisma.proveedorArticulo.updateMany({
-    where: {
-      articuloId: codArticulo,
-      predeterminado: true,
-    },
-    data: { predeterminado: false }
-  });
-
-  await prisma.proveedorArticulo.updateMany({
-    where: {
-      proveedorId: provId,
-      articuloId: codArticulo
-    },
-    data: { predeterminado: true }
-  });
-
   const tiempoEntrega = await prisma.proveedorArticulo.findFirst({
     where: {
-      proveedorId: provId,
+      predeterminado: true,
       articuloId: codArticulo
     },
     select: { demoraEntrega: true },
@@ -186,6 +169,27 @@ export const actualizarArticulo = async (
 
   return articuloActualizado;
 };
+
+export const definirProvDeterminado = async (codArticulo: number, provId: number) => {
+
+  await prisma.proveedorArticulo.updateMany({
+    where: {
+      articuloId: codArticulo,
+      predeterminado: true,
+    },
+    data: { predeterminado: false }
+  });
+
+  const prov = await prisma.proveedorArticulo.updateMany({
+    where: {
+      proveedorId: provId,
+      articuloId: codArticulo
+    },
+    data: { predeterminado: true }
+  });
+
+  return prov;
+}
 
 export const obtenerTodosLosArticulos = async () => {
   return await prisma.articulo.findMany({
@@ -349,14 +353,14 @@ export const articuloStockSeguridad = async () => {
     where: {
       fechaBaja: null,
       modeloInventario: 'modeloFijoInventario',
-    }, 
+    },
     include: {
       modeloFijoInventario: true,
     },
-  }).then((articulos: any[])=>
+  }).then((articulos: any[]) =>
     articulos.filter(articulo => articulo.stockActual < (articulo.modeloFijoInventario?.stockSeguridadInt || 0))
   );;
-  
+
   const articulosLoteFijoJSON = articulosLoteFijo.map(articulo => ({
     id: articulo.codArticulo,
     nombre: articulo.nombreArticulo,
