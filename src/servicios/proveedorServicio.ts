@@ -49,9 +49,25 @@ export const darDeBajaProveedor = async (codProveedor: number) => {
   });
 };
 
-export const asignarArticuloAProveedor = async (proveedorId: number, articuloId: number
-  , cargoPedido: number, demoraEntrega: number, precioUnitaria: number, predeterminado: boolean = false
+export const asignarArticuloAProveedor = async (
+  proveedorId: number,
+  articuloId: number,
+  cargoPedido: number,
+  demoraEntrega: number,
+  precioUnitaria: number,
+  predeterminado: boolean = false
 ) => {
+  // Validar que no exista ya la asociación
+  const existe = await prisma.proveedorArticulo.findFirst({
+    where: {
+      proveedorId,
+      articuloId,
+    },
+  });
+  if (existe) {
+    throw new Error('Este artículo ya está asociado a este proveedor.');
+  }
+
   return await prisma.proveedorArticulo.create({
     data: {
       proveedorId,

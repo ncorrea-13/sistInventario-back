@@ -52,7 +52,7 @@ router.post('/:id', async (req, res) => {
   try {
     const proveedorId = parseInt(req.params.id);
     const { articuloId, precioUnitaria, demoraEntrega, cargoPedido, predeterminado } = req.body;
-    const nuevaAsociacion = await asignarArticuloAProveedor(proveedorId, articuloId, cargoPedido, demoraEntrega, precioUnitaria, predeterminado);
+    const nuevaAsociacion = await asignarArticuloAProveedor(proveedorId, articuloId, cargoPedido, demoraEntrega, precioUnitaria);
     res.status(200).json(nuevaAsociacion);
   } catch (error) {
     res.status(500).json({ error: 'Error al asociar el artículo al proveedor.' });
