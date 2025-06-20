@@ -10,17 +10,6 @@ export const crearArticulo = async (data: any) => {
       ...data,
       codArticulo: undefined,
     },
-    select: {
-      codArticulo: true,
-      modeloInventario: true,
-      demandaAnual: true,
-      costoPedido: true,
-      costoAlmacenamiento: true,
-      desviacionDemandaL: true,
-      desviacionDemandaT: true,
-      nivelServicioDeseado: true,
-      stockActual: true,
-    },
   });
 
   const proveedor = await prisma.proveedorArticulo.findFirst({
@@ -30,7 +19,7 @@ export const crearArticulo = async (data: any) => {
     }
   });
   console.log(articulo.modeloInventario);
-  if (articulo.modeloInventario === 'modeloFijoLote') {
+  if (articulo.modeloInventario === 'loteFijo') {
     if (
       articulo.demandaAnual &&
       articulo.costoPedido &&
@@ -56,7 +45,7 @@ export const crearArticulo = async (data: any) => {
         },
       });
     }
-  } else if (articulo.modeloInventario === 'modeloFijoInventario') {
+  } else if (articulo.modeloInventario === 'intervaloFijo') {
     if (
       articulo.demandaAnual &&
       articulo.desviacionDemandaT &&
@@ -105,7 +94,7 @@ export const actualizarArticulo = async (
     select: { demoraEntrega: true },
   });
 
-  if (articuloActualizado.modeloInventario === 'modeloFijoLote') {
+  if (articuloActualizado.modeloInventario === 'loteFijo') {
     if (
       articuloActualizado.demandaAnual &&
       articuloActualizado.costoPedido &&
@@ -135,7 +124,7 @@ export const actualizarArticulo = async (
         },
       });
     }
-  } else if (articuloActualizado.modeloInventario === 'modeloFijoInventario') {
+  } else if (articuloActualizado.modeloInventario === 'intervaloFijo') {
     if (
       articuloActualizado.demandaAnual &&
       articuloActualizado.desviacionDemandaT &&
@@ -196,12 +185,23 @@ export const obtenerTodosLosArticulos = async () => {
     where: {
       fechaBaja: null,
     },
+    include: {
+      proveedorArticulos: {
+        include: {
+          proveedor: true,
+        },
+      },
+    },
   });
 };
 
 export const buscarArticuloPorId = async (codArticulo: number) => {
   const articulo = await prisma.articulo.findUnique({
     where: { codArticulo },
+    include: {
+      modeloFijoLote: true,
+      modeloFijoInventario: true,
+    },
   });
 
   if (!articulo) return null;
@@ -278,18 +278,18 @@ export const validarStockArticulo = async (articuloId: number, puntoPedido: numb
 //Listado de articulos a reponer
 
 export const articulosAReponer = async () => {
-  // Artículos con modeloFijoLote
   const articulosLoteFijo = await prisma.articulo.findMany({
     where: {
       fechaBaja: null,
-      modeloInventario: 'modeloFijoLote',
+      modeloInventario: 'loteFijo',
     },
     include: {
       modeloFijoLote: true,
       proveedorArticulos: {
-        where: { predeterminado: true },
-        select: { demoraEntrega: true }
-      }
+        include: {
+          proveedor: true,
+        },
+      },
     },
   });
 
@@ -297,7 +297,10 @@ export const articulosAReponer = async () => {
   const articulosLoteFijoFiltrados = await Promise.all(
     articulosLoteFijo.map(async (articulo: any) => {
       const demandaDiaria = articulo.demandaAnual ? articulo.demandaAnual / 365 : 0;
-      const tiempoEntrega = articulo.proveedorArticulo[0]?.demoraEntrega || 5;
+      const proveedorPredeterminado = articulo.proveedorArticulos.find(
+        (pa: any) => pa.predeterminado
+      );
+      const tiempoEntrega = proveedorPredeterminado?.demoraEntrega || 5;
       const stockSeguridadLot = articulo.modeloFijoLote?.stockSeguridadLot || 0;
       const puntoPedido = demandaDiaria * tiempoEntrega + stockSeguridadLot;
 
@@ -317,12 +320,7 @@ export const articulosAReponer = async () => {
           },
         });
         if (ordenes.length === 0) {
-          return {
-            id: articulo.codArticulo,
-            nombre: articulo.nombreArticulo,
-            stockActual: articulo.stockActual,
-            puntoPedido: Math.round(puntoPedido),
-          };
+          return articulo;
         }
       }
       return null;
@@ -330,53 +328,28 @@ export const articulosAReponer = async () => {
   );
 
   // Solo los que cumplen la condición
-  const articulosJSON = articulosLoteFijoFiltrados.filter(Boolean);
+  const articulosAFiltrar = articulosLoteFijoFiltrados.filter(Boolean);
 
-  return articulosJSON;
+  return articulosAFiltrar;
 };
 
 //Listado de articulos faltantes
 export const articuloStockSeguridad = async () => {
-  const articulosLoteFijo = await prisma.articulo.findMany({
+  return await prisma.articulo.findMany({
     where: {
       fechaBaja: null,
-      modeloInventario: 'modeloFijoLote',
+      stockActual: 0,
     },
     include: {
+      proveedorArticulos: {
+        include: {
+          proveedor: true,
+        },
+      },
       modeloFijoLote: true,
-    },
-  }).then((articulos: any[]) =>
-    articulos.filter(articulo => articulo.stockActual < (articulo.modeloFijoLote?.stockSeguridadLot || 0))
-  );;
-
-  const articulosIntervaloFijo = await prisma.articulo.findMany({
-    where: {
-      fechaBaja: null,
-      modeloInventario: 'modeloFijoInventario',
-    },
-    include: {
       modeloFijoInventario: true,
     },
-  }).then((articulos: any[]) =>
-    articulos.filter(articulo => articulo.stockActual < (articulo.modeloFijoInventario?.stockSeguridadInt || 0))
-  );;
-
-  const articulosLoteFijoJSON = articulosLoteFijo.map(articulo => ({
-    id: articulo.codArticulo,
-    nombre: articulo.nombreArticulo,
-    stockActual: articulo.stockActual,
-    stockSeguridad: articulo.modeloFijoLote?.stockSeguridadLot || 0,
-  }));
-
-  const articulosIntervaloFijoJSON = articulosIntervaloFijo.map(articulo => ({
-    id: articulo.codArticulo,
-    nombre: articulo.nombreArticulo,
-    stockActual: articulo.stockActual,
-    stockSeguridad: articulo.modeloFijoInventario?.stockSeguridadInt || 0,
-  }));
-
-  const articulosJSON = [...articulosLoteFijoJSON, ...articulosIntervaloFijoJSON];
-  return articulosJSON;
+  });
 };
 
 export const obtenerProveedorPredeterminado = async (articuloId: number): Promise<number> => {
