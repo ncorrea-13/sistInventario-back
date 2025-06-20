@@ -65,7 +65,8 @@ export const crearVenta = async (data: { montoTotalVenta: number; articulos: [{ 
 
         if (articuloStock.stockActual <= modeloLoteFijo.puntoPedido) {
           // Generar una orden de compra en estado pendiente
-          await generarOrdenCompra(articulo.articuloId, modeloLoteFijo.puntoPedido);
+          const tamanoLote = (modeloLoteFijo.puntoPedido - articuloStock.stockActual) + modeloLoteFijo.loteOptimo;
+          await generarOrdenCompra(articulo.articuloId, tamanoLote);
         }
       }
     }
