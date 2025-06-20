@@ -14,6 +14,7 @@ export const calcularCGI = async (articuloId: number) => {
   const {
     demandaAnual,
     costoAlmacenamiento,
+    costoMantenimiento,
     costoPedido,
     costoCompra,
     modeloFijoLote,
@@ -22,6 +23,7 @@ export const calcularCGI = async (articuloId: number) => {
   if (
     demandaAnual === null ||
     costoAlmacenamiento === null ||
+    costoMantenimiento === null ||
     costoPedido === null ||
     costoCompra === null ||
     !modeloFijoLote?.loteOptimo
@@ -31,7 +33,7 @@ export const calcularCGI = async (articuloId: number) => {
 
   const Q = modeloFijoLote.loteOptimo;
   const D = demandaAnual;
-  const Ch = costoAlmacenamiento;
+  const Ch = costoAlmacenamiento + costoMantenimiento;
   const Co = costoPedido;
   const Cu = costoCompra;
 

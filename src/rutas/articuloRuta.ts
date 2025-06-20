@@ -121,4 +121,18 @@ router.get('/:id/cgi', async (req: Request, res: Response) => {
     res.status(400).json({ error: error.message || 'Error al calcular el CGI' });
   }
 });
+
+// PATCH para definir el proveedor predeterminado de un artículo
+router.patch('/:id/proveedor', async (req: Request, res: Response) => {
+  try {
+    const codArticulo = Number(req.params.id);
+    const { proveedorId } = req.body;
+    const articulo = await definirProvDeterminado(codArticulo, proveedorId);
+    res.status(200).json(articulo);
+  } catch (error: any) {
+    console.error(error);
+    res.status(400).json({ error: error.message || 'Error al definir el proveedor' });
+  }
+});
+
 export default router;
