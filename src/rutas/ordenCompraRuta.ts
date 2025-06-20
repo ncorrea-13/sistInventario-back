@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { obtenerTodasLasOrdenesCompra, obtenerOrdenCompraPorId, generarOrdenCompra, actualizarOrdenCompra } from '../servicios/ordenCompraServicio';
+import { obtenerTodasLasOrdenesCompra, obtenerOrdenCompraPorId, generarOrdenCompra, actualizarOrdenCompra, cambiarEstadoOrdenCompra } from '../servicios/ordenCompraServicio';
 // Simulación de base de datos en memoria
 let ordenesCompra: any[] = [];
 let idCounter = 1;
@@ -48,6 +48,19 @@ router.put('/:id', async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Error al actualizar la orden de compra' });
+  }
+});
+
+// Cambiar el estado de una orden de compra
+router.patch('/:id/estado', async (req, res) => {
+  try {
+    const ordenCompraId = parseInt(req.params.id);
+    const { nuevoEstado } = req.body;
+    await cambiarEstadoOrdenCompra(ordenCompraId, nuevoEstado);
+    res.status(200).json({ mensaje: 'Estado actualizado correctamente' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error al cambiar el estado de la orden de compra' });
   }
 });
 
