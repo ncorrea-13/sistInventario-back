@@ -415,8 +415,8 @@ export const articuloStockSeguridad = async () => {
 
   // Revisa ambos modelos de inventario
   return articulos.filter(a => {
-    const stockSeguridadLot = a.modeloFijoLote?.stockSeguridadLot ?? Infinity;
-    const stockSeguridadInt = a.modeloFijoInventario?.stockSeguridadInt ?? Infinity;
+    const stockSeguridadLot = a.modeloFijoLote?.stockSeguridadLot ?? 0;
+    const stockSeguridadInt = a.modeloFijoInventario?.stockSeguridadInt ?? 0;
     return a.stockActual < stockSeguridadLot || a.stockActual < stockSeguridadInt;
   });
 };
