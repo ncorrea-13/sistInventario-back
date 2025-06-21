@@ -12,6 +12,16 @@ export const obtenerTodosLosProveedores = async () => {
 };
 
 export const crearProveedor = async (data: Prisma.ProveedorCreateInput) => {
+  // Validar nombre no vacío
+  if (!data.nombreProv || data.nombreProv.trim() === '') {
+    throw new Error('El nombre del proveedor no puede estar vacío.');
+  }
+
+  // Validar que tenga al menos un artículo asociado
+  if (!data.articulos || !Array.isArray(data.articulos.create) || data.articulos.create.length === 0) {
+    throw new Error('Debe asociar al menos un artículo al proveedor.');
+  }
+
   return await prisma.proveedor.create({ data });
 }
 
