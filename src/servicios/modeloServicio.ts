@@ -6,6 +6,7 @@ export const calcularCGI = async (articuloId: number) => {
     where: { codArticulo: articuloId },
     include: {
       modeloFijoLote: true,
+      modeloFijoInventario: true,
     },
   });
 
@@ -18,32 +19,51 @@ export const calcularCGI = async (articuloId: number) => {
     costoPedido,
     costoCompra,
     modeloFijoLote,
+    modeloFijoInventario,
+    stockActual,
+    desviacionDemandaT,
+    nivelServicioDeseado,
   } = articulo;
 
-  if (
-    demandaAnual === null ||
-    costoAlmacenamiento === null ||
-    costoMantenimiento === null ||
-    costoPedido === null ||
-    costoCompra === null ||
-    !modeloFijoLote?.loteOptimo
-  ) {
-    throw new Error('Faltan datos para calcular el CGI');
-  }
-
-  const Q = modeloFijoLote.loteOptimo;
   const D = demandaAnual;
   const Ch = costoAlmacenamiento + costoMantenimiento;
   const Co = costoPedido;
   const Cu = costoCompra;
 
+  let Q: number | undefined;
+  let modelo: string;
+
+  if (
+    modeloFijoLote?.loteOptimo &&
+    D !== null && Ch !== null && Co !== null && Cu !== null
+  ) {
+    Q = modeloFijoLote.loteOptimo;
+    modelo = 'loteFijo';
+  } else if (
+    modeloFijoInventario?.intervaloTiempo &&
+    D !== null && Ch !== null && Co !== null && Cu !== null && stockActual !== null
+  ) {
+     const intervalo = calcularModeloIntervaloFijo({
+      demandaAnual: D,
+      desviacionDemandaT,
+      nivelServicioDeseado,
+      intervaloTiempo: modeloFijoInventario.intervaloTiempo,
+      tiempoEntrega: 0, // Cambia si tienes este dato
+      stockActual,
+    });
+    Q = intervalo.inventarioMaximo;
+    modelo = 'intervaloFijo';
+  } else {
+    throw new Error('Faltan datos o modelo para calcular el CGI');
+  }
   const CGI = (Q / 2) * Ch + (D / Q) * Co + D * Cu;
 
   return {
     articulo: articulo.nombreArticulo,
+    modelo,
     CGI: Math.round(CGI * 100) / 100,
     detalle: {
-      Q,
+      Q: Math.round(Q * 100) / 100,
       Ch,
       Co,
       D,
@@ -51,6 +71,7 @@ export const calcularCGI = async (articuloId: number) => {
     },
   };
 };
+
 // ✅ Calcular modelo de lote fijo
 export function calcularModeloLoteFijo(params: {
   demandaAnual: number;

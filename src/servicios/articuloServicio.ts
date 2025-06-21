@@ -67,24 +67,23 @@ export const crearArticulo = async (data: any) => {
       articulo.demandaAnual >= 0 &&
       articulo.desviacionDemandaT >= 0 &&
       articulo.nivelServicioDeseado >= 0
-    ) {
-      const intervaloTiempo = 7;
+    ) { 
 
       const calculo = calcularModeloIntervaloFijo({
         demandaAnual: articulo.demandaAnual,
         desviacionDemandaT: articulo.desviacionDemandaT,
         nivelServicioDeseado: articulo.nivelServicioDeseado,
-        intervaloTiempo,
+        intervaloTiempo: data.intervaloTiempo || 7, // Asignar un valor por defecto si no se proporciona
         tiempoEntrega: proveedor?.demoraEntrega || 5,
         stockActual: articulo.stockActual || 0,
       });
 
       await prisma.modeloInvFijo.create({
         data: {
-          intervaloTiempo,
+          intervaloTiempo: data.intervaloTiempo || 7, // Asignar un valor por defecto si no se proporciona
           stockSeguridadInt: calculo.stockSeguridadInt,
           articuloId: articulo.codArticulo,
-          tiempoActual: intervaloTiempo, // Inicializar el tiempo actual al intervalo
+          tiempoActual: data.intervaloTiempo, // Inicializar el tiempo actual al intervalo
         },
       });
     }

@@ -149,7 +149,7 @@ const verificarOrdenCompraActiva = async (articuloId: number): Promise<void> => 
 
 export const cambiarEstadoOrdenCompra = async (
   ordenCompraId: number,
-  nuevoEstado: "Pendiente" | "Enviada" | "Finalizada" | "Cancelada"
+  nuevoEstado: "Pendiente" | "Enviada" | "Finalizada" | "Cancelada" 
 ): Promise<void> => {
   // Obtener la orden de compra actual junto con su estado
   const orden = await prisma.ordenCompra.findUnique({
