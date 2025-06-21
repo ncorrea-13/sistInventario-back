@@ -11,15 +11,15 @@ model Proveedor {
   codProveedor       Int                 @id @default(autoincrement())
   fechaBajaProveedor DateTime?
   nombreProv         String
-  articulos          ProveedorArticulo[]
   ordenesCompra      OrdenCompra[]
+  articulos          ProveedorArticulo[]
 }
 
 model ModeloLoteFijo {
   id                Int      @id @default(autoincrement())
   loteOptimo        Int
   puntoPedido       Int
-  stockSeguridadLot Int //Lit Time, demanda diaria
+  stockSeguridadLot Int
   articuloId        Int      @unique
   articulo          Articulo @relation(fields: [articuloId], references: [codArticulo])
 }
@@ -27,9 +27,9 @@ model ModeloLoteFijo {
 model ModeloInvFijo {
   id                Int      @id @default(autoincrement())
   intervaloTiempo   Int
-  tiempoActual      Int
   stockSeguridadInt Int
   articuloId        Int      @unique
+  tiempoActual      Int
   articulo          Articulo @relation(fields: [articuloId], references: [codArticulo])
 }
 
@@ -38,8 +38,8 @@ model ArticuloVenta {
   cantidadArticulo Int
   VentaId          Int
   ArticuloId       Int
-  venta            Venta    @relation(fields: [VentaId], references: [nroVenta])
   articulo         Articulo @relation(fields: [ArticuloId], references: [codArticulo])
+  venta            Venta    @relation(fields: [VentaId], references: [nroVenta])
 }
 
 model Venta {
@@ -54,10 +54,10 @@ model OrdenCompra {
   tamanoLote     Int
   montoOrden     Float
   proveedorId    Int
-  proveedor      Proveedor      @relation(fields: [proveedorId], references: [codProveedor])
-  detalles       OrdenDetalle[]
   ordenEstadoId  Int
   ordenEstado    EstadoOrden    @relation(fields: [ordenEstadoId], references: [codEstadoOrden])
+  proveedor      Proveedor      @relation(fields: [proveedorId], references: [codProveedor])
+  detalles       OrdenDetalle[]
 }
 
 model EstadoOrden {
@@ -72,21 +72,22 @@ model Articulo {
   nombreArticulo       String
   descripcionArticulo  String
   fechaBaja            DateTime?
-  stockActual          Int //Ajuste de inventario. Sin hacer la compra automática, ni saltar por la venta.
+  stockActual          Int
   costoAlmacenamiento  Float
   costoCompra          Float
   costoPedido          Float
   costoMantenimiento   Float
-  demandaAnual         Float //se carga a mano porque no hay módulo, puede sufrir alteraciones mientras va evolucionando
+  demandaAnual         Float
+  nivelServicioDeseado Float
   desviacionDemandaL   Float
   desviacionDemandaT   Float
-  nivelServicioDeseado Float
-  modeloInventario     String? // Puede ser Fijo o Variable
-  proveedorArticulos   ProveedorArticulo[]
+  modeloInventario     String?
+  precioUnitario       Float
   articuloVenta        ArticuloVenta[]
-  ordenDetalle         OrdenDetalle[]
-  modeloFijoLote       ModeloLoteFijo?
   modeloFijoInventario ModeloInvFijo?
+  modeloFijoLote       ModeloLoteFijo?
+  ordenDetalle         OrdenDetalle[]
+  proveedorArticulos   ProveedorArticulo[]
 }
 
 model ProveedorArticulo {
@@ -97,14 +98,14 @@ model ProveedorArticulo {
   predeterminado Boolean
   proveedorId    Int
   articuloId     Int
-  proveedor      Proveedor @relation(fields: [proveedorId], references: [codProveedor])
   articulo       Articulo  @relation(fields: [articuloId], references: [codArticulo])
+  proveedor      Proveedor @relation(fields: [proveedorId], references: [codProveedor])
 }
 
 model OrdenDetalle {
   id            Int         @id @default(autoincrement())
   ordenCompraId Int
   articuloId    Int
-  ordenCompra   OrdenCompra @relation(fields: [ordenCompraId], references: [numOrdenCompra])
   articulo      Articulo    @relation(fields: [articuloId], references: [codArticulo])
+  ordenCompra   OrdenCompra @relation(fields: [ordenCompraId], references: [numOrdenCompra])
 }

@@ -4,7 +4,24 @@ import { calcularModeloLoteFijo, calcularModeloIntervaloFijo } from './modeloSer
 
 // ✅ Crear un artículo
 export const crearArticulo = async (data: any) => {
+  const camposNumericos = [
+    'stockActual',
+    'costoAlmacenamiento',
+    'costoCompra',
+    'costoPedido',
+    'costoMantenimiento',
+    'demandaAnual',
+    'desviacionDemandaL',
+    'desviacionDemandaT',
+    'nivelServicioDeseado',
+    'precioUnitario'
+  ];
 
+  for (const campo of camposNumericos) {
+    if (typeof data[campo] !== 'number' || data[campo] < 0) {
+      throw new Error(`El campo "${campo}" debe ser un número positivo.`);
+    }
+  }
   const articulo = await prisma.articulo.create({
     data: {
       ...data,
@@ -21,11 +38,11 @@ export const crearArticulo = async (data: any) => {
   console.log(articulo.modeloInventario);
   if (articulo.modeloInventario === 'loteFijo') {
     if (
-      articulo.demandaAnual &&
-      articulo.costoPedido &&
-      articulo.costoAlmacenamiento &&
-      articulo.desviacionDemandaL &&
-      articulo.nivelServicioDeseado
+      articulo.demandaAnual >= 0 &&
+      articulo.costoPedido  >= 0 &&
+      articulo.costoAlmacenamiento >= 0 &&
+      articulo.desviacionDemandaL >= 0 &&
+      articulo.nivelServicioDeseado >= 0 
     ) {
       const calculo = calcularModeloLoteFijo({
         demandaAnual: articulo.demandaAnual,
@@ -47,9 +64,9 @@ export const crearArticulo = async (data: any) => {
     }
   } else if (articulo.modeloInventario === 'intervaloFijo') {
     if (
-      articulo.demandaAnual &&
-      articulo.desviacionDemandaT &&
-      articulo.nivelServicioDeseado
+      articulo.demandaAnual >= 0 &&
+      articulo.desviacionDemandaT >= 0 &&
+      articulo.nivelServicioDeseado >= 0
     ) {
       const intervaloTiempo = 7;
 
@@ -80,11 +97,47 @@ export const actualizarArticulo = async (
   codArticulo: number,
   data: any,
 ) => {
+    const camposNumericos = [
+    'stockActual',
+    'costoAlmacenamiento',
+    'costoCompra',
+    'costoPedido',
+    'costoMantenimiento',
+    'demandaAnual',
+    'desviacionDemandaL',
+    'desviacionDemandaT',
+    'nivelServicioDeseado',
+    'precioUnitario'
+  ];
+
+  for (const campo of camposNumericos) {
+    if (typeof data[campo] !== 'number' || data[campo] < 0) {
+      throw new Error(`El campo "${campo}" debe ser un número positivo.`);
+    }
+  }
+
   const { codArticulo: _, proveedores, ...dataSinCodArticulo } = data;
+  
+  const articuloPrevio = await prisma.articulo.findUnique({
+    where: { codArticulo },
+    select: { modeloInventario: true },
+  });
+  
   const articuloActualizado = await prisma.articulo.update({
     where: { codArticulo },
     data: dataSinCodArticulo,
   });
+
+  if (
+    articuloPrevio?.modeloInventario &&
+    articuloPrevio.modeloInventario !== articuloActualizado.modeloInventario
+  ) {
+    if (articuloPrevio.modeloInventario === 'loteFijo') {
+      await prisma.modeloLoteFijo.deleteMany({ where: { articuloId: codArticulo } });
+    } else if (articuloPrevio.modeloInventario === 'intervaloFijo') {
+      await prisma.modeloInvFijo.deleteMany({ where: { articuloId: codArticulo } });
+    }
+  }
 
   const tiempoEntrega = await prisma.proveedorArticulo.findFirst({
     where: {
@@ -96,11 +149,11 @@ export const actualizarArticulo = async (
 
   if (articuloActualizado.modeloInventario === 'loteFijo') {
     if (
-      articuloActualizado.demandaAnual &&
-      articuloActualizado.costoPedido &&
-      articuloActualizado.costoAlmacenamiento &&
-      articuloActualizado.desviacionDemandaL &&
-      articuloActualizado.nivelServicioDeseado
+      articuloActualizado.demandaAnual >= 0 &&
+      articuloActualizado.costoPedido >= 0 &&
+      articuloActualizado.costoAlmacenamiento >= 0 &&
+      articuloActualizado.desviacionDemandaL >= 0 &&
+      articuloActualizado.nivelServicioDeseado >= 0
     ) {
       const calculo = calcularModeloLoteFijo({
         demandaAnual: articuloActualizado.demandaAnual,
@@ -126,9 +179,9 @@ export const actualizarArticulo = async (
     }
   } else if (articuloActualizado.modeloInventario === 'intervaloFijo') {
     if (
-      articuloActualizado.demandaAnual &&
-      articuloActualizado.desviacionDemandaT &&
-      articuloActualizado.nivelServicioDeseado
+      articuloActualizado.demandaAnual >= 0 &&
+      articuloActualizado.desviacionDemandaT >= 0 &&
+      articuloActualizado.nivelServicioDeseado >= 0 
     ) {
       const intervaloTiempo = 7;
       const calculo = calcularModeloIntervaloFijo({
@@ -187,6 +240,11 @@ export const obtenerTodosLosArticulos = async () => {
     },
     include: {
       proveedorArticulos: {
+        where: {
+          proveedor: {
+            fechaBajaProveedor: null,
+          },
+        },
         include: {
           proveedor: true,
         },
@@ -213,14 +271,20 @@ export const buscarArticuloPorId = async (codArticulo: number) => {
         select: {
           codProveedor: true,
           nombreProv: true,
+          fechaBajaProveedor: true
         },
       },
     },
   });
 
+  // Filtrar solo los proveedores activos (fechaBajaProveedor === null)
+  const proveedoresActivos = proveedores
+    .map((p) => p.proveedor)
+    .filter((prov) => prov.fechaBajaProveedor === null);
+
   return {
     ...articulo,
-    proveedores: proveedores.map((p) => p.proveedor),
+    proveedores: proveedoresActivos,
   };
 };
 
@@ -244,9 +308,9 @@ export const darDeBajaArticulo = async (codArticulo: number) => {
         },
       },
       ordenEstado: {
-        nombreEstadoOrden: {
-          in: ['pendiente', 'enviada'],
-        },
+          codEstadoOrden: {
+                in: [1, 2], // 1 es Estado Pendiente y 2 Estado Finalizado
+              },
       },
     },
   });
@@ -313,8 +377,8 @@ export const articulosAReponer = async () => {
               },
             },
             ordenEstado: {
-              nombreEstadoOrden: {
-                in: ['pendiente', 'enviada'],
+              codEstadoOrden: {
+                in: [1, 2],
               },
             },
           },
@@ -335,10 +399,9 @@ export const articulosAReponer = async () => {
 
 //Listado de articulos faltantes
 export const articuloStockSeguridad = async () => {
-  return await prisma.articulo.findMany({
+  const articulos = await prisma.articulo.findMany({
     where: {
       fechaBaja: null,
-      stockActual: 0,
     },
     include: {
       proveedorArticulos: {
@@ -349,6 +412,13 @@ export const articuloStockSeguridad = async () => {
       modeloFijoLote: true,
       modeloFijoInventario: true,
     },
+  });
+
+  // Revisa ambos modelos de inventario
+  return articulos.filter(a => {
+    const stockSeguridadLot = a.modeloFijoLote?.stockSeguridadLot ?? Infinity;
+    const stockSeguridadInt = a.modeloFijoInventario?.stockSeguridadInt ?? Infinity;
+    return a.stockActual < stockSeguridadLot || a.stockActual < stockSeguridadInt;
   });
 };
 
