@@ -16,7 +16,7 @@ export const crearArticulo = async (data: any) => {
     'nivelServicioDeseado',
     'precioUnitario'
   ];
-
+  const {intervaloTiempo, ...datosArticulos} = data;
   for (const campo of camposNumericos) {
     if (typeof data[campo] !== 'number' || data[campo] < 0) {
       throw new Error(`El campo "${campo}" debe ser un número positivo.`);
@@ -24,7 +24,7 @@ export const crearArticulo = async (data: any) => {
   }
   const articulo = await prisma.articulo.create({
     data: {
-      ...data,
+      ...datosArticulos,
       codArticulo: undefined,
     },
   });
@@ -73,17 +73,17 @@ export const crearArticulo = async (data: any) => {
         demandaAnual: articulo.demandaAnual,
         desviacionDemandaT: articulo.desviacionDemandaT,
         nivelServicioDeseado: articulo.nivelServicioDeseado,
-        intervaloTiempo: data.intervaloTiempo || 7, // Asignar un valor por defecto si no se proporciona
+        intervaloTiempo: intervaloTiempo || 7, // Asignar un valor por defecto si no se proporciona
         tiempoEntrega: proveedor?.demoraEntrega || 5,
         stockActual: articulo.stockActual || 0,
       });
 
       await prisma.modeloInvFijo.create({
         data: {
-          intervaloTiempo: data.intervaloTiempo || 7, // Asignar un valor por defecto si no se proporciona
+          intervaloTiempo: intervaloTiempo || 7, // Asignar un valor por defecto si no se proporciona
           stockSeguridadInt: calculo.stockSeguridadInt,
           articuloId: articulo.codArticulo,
-          tiempoActual: data.intervaloTiempo, // Inicializar el tiempo actual al intervalo
+          tiempoActual: intervaloTiempo || 7, // Inicializar el tiempo actual al intervalo
         },
       });
     }
@@ -115,7 +115,7 @@ export const actualizarArticulo = async (
     }
   }
 
-  const { codArticulo: _, proveedores, ...dataSinCodArticulo } = data;
+  const { codArticulo: _, proveedores,intervaloTiempo, ...dataSinCodArticulo } = data;
   
   const articuloPrevio = await prisma.articulo.findUnique({
     where: { codArticulo },
@@ -182,12 +182,12 @@ export const actualizarArticulo = async (
       articuloActualizado.desviacionDemandaT >= 0 &&
       articuloActualizado.nivelServicioDeseado >= 0 
     ) {
-      const intervaloTiempo = 7;
+      
       const calculo = calcularModeloIntervaloFijo({
         demandaAnual: articuloActualizado.demandaAnual,
         desviacionDemandaT: articuloActualizado.desviacionDemandaT,
         nivelServicioDeseado: articuloActualizado.nivelServicioDeseado,
-        intervaloTiempo,
+        intervaloTiempo: intervaloTiempo || 7, // Asignar un valor por defecto si no se proporciona
         tiempoEntrega: tiempoEntrega?.demoraEntrega || 5,
         stockActual: articuloActualizado.stockActual || 0,
       });
@@ -202,7 +202,7 @@ export const actualizarArticulo = async (
           intervaloTiempo,
           stockSeguridadInt: calculo.stockSeguridadInt,
           articuloId: codArticulo,
-          tiempoActual: intervaloTiempo, // Inicializar el tiempo actual al intervalo
+          tiempoActual: intervaloTiempo || 7, // Inicializar el tiempo actual al intervalo
         },
       });
     }
