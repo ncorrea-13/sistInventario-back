@@ -26,6 +26,8 @@ const crearOrdenCompra = async (
     where: { articuloId, proveedorId },
   });
 
+  if (tamanoLote <= 0) throw new Error('El tamaño de lote debe ser positivo.');
+
   if (!proveedorArticulo) {
     throw new Error(`No se encontró un proveedor para el artículo con ID ${articuloId}`);
   }
@@ -141,7 +143,7 @@ const verificarOrdenCompraActiva = async (articuloId: number): Promise<void> => 
   });
 
   if (ordenesExistentes.length > 0) {
-    throw new Error(
+    console.warn(
       `Ya existe una Orden de Compra activa (Pendiente o Enviada) para el artículo con ID ${articuloId}`
     );
   }
@@ -156,7 +158,7 @@ export const cambiarEstadoOrdenCompra = async (
     where: { numOrdenCompra: ordenCompraId },
     include: { ordenEstado: true },
   });
-
+  
   if (!orden) {
     throw new Error(`No se encontró la Orden de Compra con ID ${ordenCompraId}.`);
   }
