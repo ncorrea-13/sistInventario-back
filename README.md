@@ -1,6 +1,7 @@
 # Backend del Proyecto con TypeScript, Prisma y PostgreSQL
 
-Este proyecto es una aplicación backend que utiliza **TypeScript**, **Prisma ORM** y **PostgreSQL**. Está diseñado para ser sencillo en configuración y ejecución.
+Este proyecto es el frontend de una aplicación fullstack. El frontend se puede encontrar en
+<https://github.com/ncorrea-13/sistInventario-front>
 
 ## Requisitos previos
 
@@ -20,36 +21,41 @@ Asegúrate de tener instalados los siguientes programas en tu máquina:
 
 ### Dependencias principales
 
-- `express`: Framework para el backend.
+- `typescript`: Lenguaje de programación utilizado para la web.
+- `node`: Entorno para poder ejecutar apps utilizando JavaScript y TypeScript.
+- `express`: Framework para crear APIs utilizando Node, JavaScript y TypeScript.
 - `pg`: Cliente de PostgreSQL.
+- `prisma`: ORM para interactuar con la base de datos.
 - `cors`: Middleware para habilitar CORS.
-- `@prisma/client`: Cliente de Prisma para interactuar con la base de datos.
+- `node-cron`: Cron para el manejo de la ejecución respecto del tiempo.
 
 ## Pasos para levantar el proyecto
+
+Para su correcta implementación, recomendamos levantar luego la interfaz de usuario (el frontend) para su óptima interacción.
 
 ### 1. Clonar el repositorio
 
 ```bash
 git clone https://github.com/ncorrea-13/sistInventario-back
-```
 cd sistInventario-back
 ```
 
-### 2. Instala las dependencias:
+### 2. Instala las dependencias
 
    ```bash
    npm install
    ```
 
-### 3. Configura las variables de entorno:
-   - Crea un archivo `.env` en el directorio
-   - Añade la URL de conexión a tu base de datos PostgreSQL:
+### 3. Configura las variables de entorno
+
+- Crea un archivo `.env` en el directorio
+- Añade la URL de conexión a tu base de datos PostgreSQL:
 
      ```env
      DATABASE_URL=postgresql://<usuario>:<contraseña>@<host>:<puerto>/<nombre_base_datos>
      ```
 
-### 4. Ejecuta las migraciones para sincronizar el esquema con la base de datos:
+### 4. Ejecuta las migraciones para sincronizar el esquema con la base de datos
 
    ```bash
    npx prisma migrate dev --name init
@@ -63,24 +69,13 @@ cd sistInventario-back
 
 ### 6. Ejecutar el proyecto localmente
 
-1. Inicia la API:
-
    ```bash
    npm run dev
    ```
 
-2. Abre tu navegador y ve a `http://localhost:3000` para interactuar con el servidor backend.
+Una vez ejecutado, puede utilizar PostMan apuntando hacia `http://localhost:3000` para interactuar con el servidor backend.
 
-
-## Estructura del proyecto
-
-```
-<raíz_del_proyecto>/
-├── prisma/       # Configuración y esquema de la base de datos
-├── src/          # Código fuente del backend
-├── tsconfig.json # Configuración de TypeScript
-├── package.json  # Dependencias y scripts
-```
+Alternativamente, puede levantar el frontend así posee una interacción por medio de una interfaz gráfica más óptima.
 
 ## Tecnologías utilizadas
 
