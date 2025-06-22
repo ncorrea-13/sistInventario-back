@@ -17,8 +17,8 @@ router.post('/', async (req: Request, res: Response) => {
       mensaje: 'Venta registrada exitosamente',
       venta: nuevaVenta,
     });
-  } catch (error) {
-    res.status(500).json({ mensaje: 'Error al registrar la venta', error });
+  } catch (error: any) {
+    res.status(500).json({ mensaje: 'Error al registrar la venta', error: error.message });
   }
 });
 

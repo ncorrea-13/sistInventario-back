@@ -239,15 +239,16 @@ export const obtenerTodosLosArticulos = async () => {
     },
     include: {
       proveedorArticulos: {
-        where: {
+        include: {
           proveedor: {
-            fechaBajaProveedor: null,
+            select: {
+              codProveedor: true,
+              nombreProv: true,
+            },
           },
         },
-        include: {
-          proveedor: true,
-        },
       },
+      modeloFijoLote: true,
     },
   });
 };
@@ -258,10 +259,28 @@ export const buscarArticuloPorId = async (codArticulo: number) => {
     include: {
       modeloFijoLote: true,
       modeloFijoInventario: true,
+      proveedorArticulos: {
+        where: { predeterminado: true },
+        select: { demoraEntrega: true },
+      },
     },
   });
 
   if (!articulo) return null;
+
+  let inventarioMaximo;
+  if (articulo.modeloInventario === 'intervaloFijo' && articulo.modeloFijoInventario) {
+    const tiempoEntrega = articulo.proveedorArticulos[0]?.demoraEntrega || 0;
+    const calculo = calcularModeloIntervaloFijo({
+      demandaAnual: articulo.demandaAnual,
+      desviacionDemandaT: articulo.desviacionDemandaT,
+      nivelServicioDeseado: articulo.nivelServicioDeseado,
+      intervaloTiempo: articulo.modeloFijoInventario.intervaloTiempo,
+      tiempoEntrega: tiempoEntrega,
+      stockActual: articulo.stockActual,
+    });
+    inventarioMaximo = calculo.inventarioMaximo;
+  }
 
   const proveedores = await prisma.proveedorArticulo.findMany({
     where: { articuloId: codArticulo },
@@ -270,7 +289,7 @@ export const buscarArticuloPorId = async (codArticulo: number) => {
         select: {
           codProveedor: true,
           nombreProv: true,
-          fechaBajaProveedor: true
+          fechaBajaProveedor: true,
         },
       },
     },
@@ -283,6 +302,7 @@ export const buscarArticuloPorId = async (codArticulo: number) => {
 
   return {
     ...articulo,
+    inventarioMaximo,
     proveedores: proveedoresActivos,
   };
 };
@@ -341,6 +361,7 @@ export const validarStockArticulo = async (articuloId: number, puntoPedido: numb
 //Listado de articulos a reponer
 
 export const articulosAReponer = async () => {
+  // 1. Obtener todos los artículos activos del modelo 'loteFijo'
   const articulosLoteFijo = await prisma.articulo.findMany({
     where: {
       fechaBaja: null,
@@ -356,44 +377,49 @@ export const articulosAReponer = async () => {
     },
   });
 
-  // Filtrar artículos cuyo stockActual < puntoPedido y sin OC pendientes/enviadas
-  const articulosLoteFijoFiltrados = await Promise.all(
-    articulosLoteFijo.map(async (articulo: any) => {
-      const demandaDiaria = articulo.demandaAnual ? articulo.demandaAnual / 365 : 0;
-      const proveedorPredeterminado = articulo.proveedorArticulos.find(
-        (pa: any) => pa.predeterminado
-      );
-      const tiempoEntrega = proveedorPredeterminado?.demoraEntrega || 5;
-      const stockSeguridadLot = articulo.modeloFijoLote?.stockSeguridadLot || 0;
-      const puntoPedido = demandaDiaria * tiempoEntrega + stockSeguridadLot;
+  // 2. Filtrar artículos cuyo stock actual está por debajo del punto de pedido guardado
+  const articulosDebajoPuntoPedido = articulosLoteFijo.filter((articulo) => {
+    if (!articulo.modeloFijoLote) return false;
+    return articulo.stockActual < articulo.modeloFijoLote.puntoPedido;
+  });
 
-      if (articulo.stockActual < puntoPedido) {
-        const ordenes = await prisma.ordenCompra.findMany({
-          where: {
-            detalles: {
-              some: {
-                articuloId: articulo.codArticulo,
-              },
-            },
-            ordenEstado: {
-              codEstadoOrden: {
-                in: [1, 2],
-              },
-            },
-          },
-        });
-        if (ordenes.length === 0) {
-          return articulo;
-        }
-      }
-      return null;
-    })
+  if (articulosDebajoPuntoPedido.length === 0) {
+    return [];
+  }
+
+  // 3. Obtener los IDs de los artículos que ya tienen una orden de compra pendiente o enviada
+  const idsDebajoPuntoPedido = articulosDebajoPuntoPedido.map(
+    (a) => a.codArticulo
   );
 
-  // Solo los que cumplen la condición
-  const articulosAFiltrar = articulosLoteFijoFiltrados.filter(Boolean);
+  const ordenesExistentes = await prisma.ordenCompra.findMany({
+    where: {
+      ordenEstado: {
+        codEstadoOrden: { in: [1, 2] }, // 1: Pendiente, 2: Enviada
+      },
+      detalles: {
+        some: {
+          articuloId: { in: idsDebajoPuntoPedido },
+        },
+      },
+    },
+    select: {
+      detalles: {
+        select: {
+          articuloId: true,
+        },
+      },
+    },
+  });
 
-  return articulosAFiltrar;
+  const idsConOrden = new Set(
+    ordenesExistentes.flatMap((oc) => oc.detalles.map((d) => d.articuloId))
+  );
+
+  // 4. Filtrar y devolver solo los que no tienen una orden pendiente/enviada
+  return articulosDebajoPuntoPedido.filter(
+    (articulo) => !idsConOrden.has(articulo.codArticulo)
+  );
 };
 
 //Listado de articulos faltantes
@@ -415,8 +441,8 @@ export const articuloStockSeguridad = async () => {
 
   // Revisa ambos modelos de inventario
   return articulos.filter(a => {
-    const stockSeguridadLot = a.modeloFijoLote?.stockSeguridadLot ?? Infinity;
-    const stockSeguridadInt = a.modeloFijoInventario?.stockSeguridadInt ?? Infinity;
+    const stockSeguridadLot = a.modeloFijoLote?.stockSeguridadLot ?? 0;
+    const stockSeguridadInt = a.modeloFijoInventario?.stockSeguridadInt ?? 0;
     return a.stockActual < stockSeguridadLot || a.stockActual < stockSeguridadInt;
   });
 };
