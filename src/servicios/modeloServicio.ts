@@ -51,7 +51,7 @@ export const calcularCGI = async (articuloId: number) => {
       tiempoEntrega: 0, // Cambia si tienes este dato
       stockActual,
     });
-    Q = intervalo.inventarioMaximo;
+    Q = intervalo.loteOptimo;
     modelo = 'intervaloFijo';
   } else {
     throw new Error('Faltan datos o modelo para calcular el CGI');
@@ -126,10 +126,11 @@ export function calcularModeloIntervaloFijo(params: {
   const L = tiempoEntrega;
 
   const stockSeguridadInt = nivelServicioDeseado * desviacionDemandaT * (T + L);
-  const inventarioMaximo = d * (T + L) + stockSeguridadInt - stockActual ;
-
+  const loteOptimo = d * (T + L) + stockSeguridadInt - stockActual;
+  const inventarioMaximo = d * (T + L) + stockSeguridadInt;
   return {
     stockSeguridadInt: Math.round(stockSeguridadInt),
+    loteOptimo: Math.round(loteOptimo),
     inventarioMaximo: Math.round(inventarioMaximo),
   };
 }

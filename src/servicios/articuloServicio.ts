@@ -35,7 +35,6 @@ export const crearArticulo = async (data: any) => {
       predeterminado: true
     }
   });
-  console.log(articulo.modeloInventario);
   if (articulo.modeloInventario === 'loteFijo') {
     if (
       articulo.demandaAnual >= 0 &&
@@ -233,7 +232,7 @@ export const definirProvDeterminado = async (codArticulo: number, provId: number
 }
 
 export const obtenerTodosLosArticulos = async () => {
-  return await prisma.articulo.findMany({
+  const articulos = await prisma.articulo.findMany({
     where: {
       fechaBaja: null,
     },
@@ -249,7 +248,27 @@ export const obtenerTodosLosArticulos = async () => {
         },
       },
       modeloFijoLote: true,
+      modeloFijoInventario: true,
     },
+  });
+
+  return articulos.map((articulo) => {
+    if (articulo.modeloInventario === 'intervaloFijo') {
+      const proveedor = articulo.proveedorArticulos.find(p => p.predeterminado);
+      if (proveedor && articulo.modeloFijoInventario) {
+        const calculo = calcularModeloIntervaloFijo({
+          demandaAnual: articulo.demandaAnual,
+          desviacionDemandaT: articulo.desviacionDemandaT,
+          nivelServicioDeseado: articulo.nivelServicioDeseado,
+          intervaloTiempo: articulo.modeloFijoInventario.intervaloTiempo,
+          tiempoEntrega: proveedor.demoraEntrega || 5,
+          stockActual: articulo.stockActual || 0,
+        });
+        return { ...articulo, loteOptimo: calculo.loteOptimo };
+      }
+    }
+    // Retornar el artículo tal cual si no corresponde agregar loteOptimo
+    return articulo;
   });
 };
 
@@ -267,8 +286,8 @@ export const buscarArticuloPorId = async (codArticulo: number) => {
   });
 
   if (!articulo) return null;
-
   let inventarioMaximo;
+  let loteOptimo;
   if (articulo.modeloInventario === 'intervaloFijo' && articulo.modeloFijoInventario) {
     const tiempoEntrega = articulo.proveedorArticulos[0]?.demoraEntrega || 0;
     const calculo = calcularModeloIntervaloFijo({
@@ -280,8 +299,8 @@ export const buscarArticuloPorId = async (codArticulo: number) => {
       stockActual: articulo.stockActual,
     });
     inventarioMaximo = calculo.inventarioMaximo;
+    loteOptimo = calculo.loteOptimo;
   }
-
   const proveedores = await prisma.proveedorArticulo.findMany({
     where: { articuloId: codArticulo },
     select: {
@@ -302,6 +321,7 @@ export const buscarArticuloPorId = async (codArticulo: number) => {
 
   return {
     ...articulo,
+    loteOptimo,
     inventarioMaximo,
     proveedores: proveedoresActivos,
   };
